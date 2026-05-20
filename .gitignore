@@ -1,0 +1,8 @@
+node_modules/
+miniprogram_npm/
+.DS_Store
+*.log
+.env
+server/data/db.json
+server/uploads/*
+!server/uploads/.gitkeep

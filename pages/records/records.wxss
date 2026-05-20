@@ -1,0 +1,58 @@
+.empty {
+  padding: 48rpx 28rpx;
+  text-align: center;
+}
+
+.empty-title {
+  color: #111827;
+  font-size: 34rpx;
+  font-weight: 700;
+}
+
+.empty-text {
+  margin-top: 12rpx;
+}
+
+.empty-btn {
+  height: 72rpx;
+  line-height: 72rpx;
+  margin-top: 32rpx;
+}
+
+.record {
+  margin-bottom: 20rpx;
+}
+
+.record-head {
+  align-items: flex-start;
+  display: flex;
+  gap: 16rpx;
+  justify-content: space-between;
+  margin-bottom: 16rpx;
+}
+
+.record-title {
+  color: #111827;
+  font-size: 30rpx;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.status {
+  background: #fff7e6;
+  border-radius: 8rpx;
+  color: #ad6800;
+  flex: 0 0 auto;
+  font-size: 24rpx;
+  padding: 6rpx 12rpx;
+}
+
+.record-line {
+  color: #374151;
+  line-height: 1.6;
+  margin-top: 8rpx;
+}
+
+.path {
+  word-break: break-all;
+}

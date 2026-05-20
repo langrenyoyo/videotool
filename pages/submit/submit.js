@@ -1,0 +1,174 @@
+const { getTask } = require("../../utils/tasks");
+const { requestTask, uploadAsset, uploadSubmission } = require("../../utils/api");
+const { validateSubmission } = require("../../utils/submissions");
+
+Page({
+  data: {
+    task: getTask("qf4M84e"),
+    gameIdImagePath: "",
+    orderImagePath: "",
+    videoPath: "",
+    gameId: "",
+    orderNo: "",
+    gameIdImageFileId: "",
+    orderImageFileId: "",
+    videoFileId: "",
+    submitting: false
+  },
+
+  onLoad(query) {
+    this.setData({
+      task: getTask(query.code)
+    });
+    requestTask()
+      .then(task => {
+        if (task && task.title) {
+          this.setData({ task });
+        }
+      })
+      .catch(() => {});
+  },
+
+  onGameIdInput(event) {
+    this.setData({ gameId: event.detail.value });
+  },
+
+  onOrderNoInput(event) {
+    this.setData({ orderNo: event.detail.value });
+  },
+
+  chooseGameIdImage() {
+    this.pickImage(true);
+  },
+
+  chooseGameIdFromAlbum() {
+    this.pickImage(false, "album");
+  },
+
+  chooseOrderImage() {
+    this.pickImage(false, null, "order");
+  },
+
+  chooseOrderFromAlbum() {
+    this.pickImage(false, "album", "order");
+  },
+
+  chooseVideoFromCamera() {
+    this.pickVideo("camera");
+  },
+
+  chooseVideoFromAlbum() {
+    this.pickVideo("album");
+  },
+
+  pickImage(useCamera = false, sourceType = null, kind = "gameId") {
+    wx.chooseMedia({
+      count: 1,
+      mediaType: ["image"],
+      sourceType: sourceType ? [sourceType] : useCamera ? ["camera"] : ["album", "camera"],
+      success: res => {
+        const file = res.tempFiles && res.tempFiles[0];
+        if (!file) {
+          return;
+        }
+        const pathKey = kind === "order" ? "orderImagePath" : "gameIdImagePath";
+        this.setData({
+          [pathKey]: file.tempFilePath
+        });
+        this.uploadAndMockRecognize(kind, file.tempFilePath);
+      }
+    });
+  },
+
+  pickVideo(sourceType) {
+    wx.chooseMedia({
+      count: 1,
+      mediaType: ["video"],
+      sourceType: [sourceType],
+      maxDuration: 300,
+      success: res => {
+        const file = res.tempFiles && res.tempFiles[0];
+        if (!file) {
+          return;
+        }
+        this.setData({
+          videoPath: file.tempFilePath
+        });
+        uploadAsset({
+          kind: "video",
+          filePath: file.tempFilePath
+        }).then(data => {
+          this.setData({ videoFileId: data.fileId || "" });
+        }).catch(() => {});
+      }
+    });
+  },
+
+  uploadAndMockRecognize(kind, filePath) {
+    uploadAsset({
+      kind,
+      filePath
+    })
+      .then(data => {
+        const fileIdKey = kind === "order" ? "orderImageFileId" : "gameIdImageFileId";
+        const recognize = data.recognize || {};
+        const next = {
+          [fileIdKey]: data.fileId || ""
+        };
+        if (kind === "gameId" && recognize.gameId) {
+          next.gameId = recognize.gameId;
+        }
+        if (kind === "order" && recognize.orderNo) {
+          next.orderNo = recognize.orderNo;
+        }
+        this.setData(next);
+      })
+      .catch(() => {});
+  },
+
+  submit() {
+    const input = {
+      taskCode: this.data.task.code,
+      taskTitle: this.data.task.title,
+      gameId: this.data.gameId,
+      orderNo: this.data.orderNo,
+      gameIdImagePath: this.data.gameIdImagePath,
+      orderImagePath: this.data.orderImagePath,
+      videoPath: this.data.videoPath,
+      gameIdImageFileId: this.data.gameIdImageFileId,
+      orderImageFileId: this.data.orderImageFileId,
+      videoFileId: this.data.videoFileId
+    };
+    const error = validateSubmission(input);
+    if (error) {
+      wx.showToast({
+        title: error,
+        icon: "none"
+      });
+      return;
+    }
+
+    this.setData({ submitting: true });
+    uploadSubmission(input)
+      .then(() => {
+        wx.showToast({
+          title: "提交成功",
+          icon: "success"
+        });
+        setTimeout(() => {
+          wx.redirectTo({
+            url: `/pages/records/records?gameId=${encodeURIComponent(this.data.gameId)}`
+          });
+        }, 600);
+      })
+      .catch(() => {
+        wx.showToast({
+          title: "提交失败，请先启动后台服务",
+          icon: "none"
+        });
+      })
+      .finally(() => {
+        this.setData({ submitting: false });
+      });
+  }
+});

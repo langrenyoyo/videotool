@@ -1,0 +1,29 @@
+{
+  "description": "任务说明与视频提交小程序",
+  "packOptions": {
+    "ignore": []
+  },
+  "setting": {
+    "urlCheck": true,
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true,
+    "coverView": true
+  },
+  "compileType": "miniprogram",
+  "libVersion": "3.7.12",
+  "appid": "touristappid",
+  "projectname": "task-submit-miniprogram",
+  "condition": {
+    "miniprogram": {
+      "list": [
+        {
+          "name": "任务提交",
+          "pathName": "pages/submit/submit",
+          "query": "code=qf4M84e"
+        }
+      ]
+    }
+  }
+}

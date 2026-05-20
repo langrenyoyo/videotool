@@ -1,0 +1,12 @@
+{
+  "name": "task-submit-miniprogram",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "server": "node server/server.js",
+    "test": "node tests/smoke.test.js"
+  },
+  "dependencies": {
+    "qiniu": "^7.13.0"
+  }
+}

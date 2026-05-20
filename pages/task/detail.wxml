@@ -1,0 +1,71 @@
+<view class="page">
+  <view class="hero">
+    <view class="hero-main">
+      <view class="code-pill">编码 {{task.code}}</view>
+      <view class="task-title">{{task.title}}</view>
+      <view class="hero-meta">更新时间 {{task.updatedAt}}</view>
+    </view>
+    <view class="amount-badge">
+      <view class="amount-label">充值金额</view>
+      <view class="amount-value">{{task.amountText}}</view>
+    </view>
+  </view>
+
+  <view class="notice-strip">
+    <view class="notice-dot"></view>
+    <view class="notice-text">请按要求完成录屏并提交资料，审核结果可在提交记录中查看。</view>
+  </view>
+
+  <view class="panel highlight-section">
+    <view class="section-head">
+      <view class="section-mark"></view>
+      <view class="section-title">{{task.sectionTitle}}</view>
+    </view>
+    <view class="content primary-content">{{task.content}}</view>
+  </view>
+
+  <view class="panel section">
+    <view class="section-head">
+      <view class="section-mark blue"></view>
+      <view class="section-title">任务流程</view>
+    </view>
+    <view class="timeline">
+      <view class="step" wx:for="{{task.steps}}" wx:key="*this">
+        <view class="step-index">{{index + 1}}</view>
+        <view class="step-body">
+          <view class="step-title">第 {{index + 1}} 步</view>
+          <view class="step-text">{{item}}</view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="panel section">
+    <view class="section-head">
+      <view class="section-mark green"></view>
+      <view class="section-title">提交资料</view>
+    </view>
+    <view class="material-list">
+      <view class="material" wx:for="{{task.requiredMaterials}}" wx:key="*this">
+        <view class="check">✓</view>
+        <view class="material-text">{{item}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="panel section">
+    <view class="section-head">
+      <view class="section-mark amber"></view>
+      <view class="section-title">提交前确认</view>
+    </view>
+    <view class="warning" wx:for="{{task.warnings}}" wx:key="*this">
+      <view class="warning-dot"></view>
+      <view class="warning-text">{{item}}</view>
+    </view>
+  </view>
+
+  <view class="actions">
+    <button class="secondary-btn action-btn" bindtap="goRecords">提交记录</button>
+    <button class="primary-btn action-btn" bindtap="goSubmit">去提交</button>
+  </view>
+</view>

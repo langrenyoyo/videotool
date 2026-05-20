@@ -1,0 +1,154 @@
+.intro {
+  padding: 4rpx 4rpx 20rpx;
+}
+
+.intro-text {
+  color: #1f2329;
+  font-size: 24rpx;
+  font-weight: 600;
+  line-height: 1.65;
+  text-align: center;
+}
+
+.task-card {
+  background: #ffffff;
+  border: 1rpx solid #e3e8ef;
+  border-radius: 8rpx;
+  margin-bottom: 18rpx;
+  padding: 24rpx 22rpx;
+}
+
+.task-card-title {
+  color: #1369d8;
+  font-size: 28rpx;
+  font-weight: 700;
+  line-height: 1.4;
+  margin-bottom: 10rpx;
+}
+
+.task-card-desc {
+  color: #1f2329;
+  font-size: 24rpx;
+  line-height: 1.5;
+}
+
+.form-card {
+  background: #ffffff;
+  border: 1rpx solid #e3e8ef;
+  border-radius: 8rpx;
+  margin-bottom: 18rpx;
+  padding: 22rpx;
+}
+
+.field-title {
+  color: #1f2329;
+  font-size: 32rpx;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.required {
+  color: #e34d59;
+  margin-left: 6rpx;
+}
+
+.field-desc {
+  color: #8a8f99;
+  font-size: 24rpx;
+  line-height: 1.5;
+  margin-top: 8rpx;
+}
+
+.upload-row {
+  display: flex;
+  gap: 14rpx;
+  margin-top: 18rpx;
+}
+
+.upload-btn {
+  align-items: center;
+  background: #f7fafc;
+  border: 1rpx solid #e5ebf2;
+  border-radius: 8rpx;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 156rpx;
+}
+
+.upload-icon {
+  font-size: 34rpx;
+  line-height: 1;
+  margin-bottom: 10rpx;
+}
+
+.upload-text {
+  color: #1f2329;
+  font-size: 26rpx;
+}
+
+.ai-box {
+  background: #f5faff;
+  border: 1rpx solid #cfe6ff;
+  border-radius: 8rpx;
+  margin-top: 16rpx;
+  overflow: hidden;
+}
+
+.ai-head {
+  background: #eaf4ff;
+  color: #1677ff;
+  font-size: 24rpx;
+  padding: 14rpx 16rpx;
+}
+
+.ai-grid {
+  align-items: stretch;
+  display: flex;
+}
+
+.ai-label {
+  align-items: center;
+  border-right: 1rpx solid #d8e4f2;
+  color: #1f2329;
+  display: flex;
+  flex: 0 0 150rpx;
+  font-size: 28rpx;
+  padding: 18rpx 16rpx;
+}
+
+.ai-input {
+  box-sizing: border-box;
+  flex: 1;
+  height: 78rpx;
+  padding: 0 18rpx;
+}
+
+.file-summary {
+  background: #f7fafc;
+  border: 1rpx solid #e3e8ef;
+  border-radius: 8rpx;
+  margin-top: 18rpx;
+  padding: 16rpx 18rpx;
+}
+
+.file-line {
+  color: #526071;
+  font-size: 24rpx;
+  line-height: 1.6;
+}
+
+.submit-btn {
+  height: 72rpx;
+  line-height: 72rpx;
+  margin-top: 18rpx;
+}
+
+.submit-tip {
+  color: #8a8f99;
+  font-size: 22rpx;
+  line-height: 1.5;
+  margin-top: 12rpx;
+  text-align: center;
+}
