@@ -1,79 +1,80 @@
 <view class="page">
   <view class="intro">
-    <view class="intro-text">
-      {{task.content}}
-    </view>
+    <view class="intro-kicker">任务提交</view>
+    <view class="intro-text">{{task.content}}</view>
   </view>
 
   <view class="task-card">
     <view class="task-card-title">{{task.title}}</view>
-    <view class="task-card-desc">上传萱桦ID截图，订单截图，充值视频</view>
+    <view class="task-card-desc">{{task.form.desc}}</view>
   </view>
 
   <view class="form-card">
-    <view class="field-title">萱桦游戏id截图<text class="required">*</text></view>
-    <view class="field-desc">请正面拍摄，要求内容清晰完整，方便AI识别</view>
+    <view class="field-title">{{task.form.gameIdImageTitle}}<text class="required">*</text></view>
+    <view class="field-desc">{{task.form.gameIdImageTip}}</view>
     <view class="upload-row">
       <view class="upload-btn" bindtap="chooseGameIdImage">
-        <view class="upload-icon">📷</view>
+        <view class="upload-icon">拍</view>
         <view class="upload-text">拍照上传</view>
       </view>
       <view class="upload-btn" bindtap="chooseGameIdFromAlbum">
-        <view class="upload-icon">🖼️</view>
-        <view class="upload-text">从相册选择</view>
+        <view class="upload-icon">册</view>
+        <view class="upload-text">相册选择</view>
       </view>
     </view>
 
     <view class="ai-box">
-      <view class="ai-head">AI将根据照片自动识别以下字段</view>
+      <view class="ai-head">AI 自动识别</view>
       <view class="ai-grid">
-        <view class="ai-label">ID</view>
+        <view class="ai-label">{{task.form.gameIdFieldLabel}}</view>
         <input class="ai-input" value="{{gameId}}" placeholder="自动识别或手动填写" bindinput="onGameIdInput" />
       </view>
+      <view wx:if="{{recognizingGameId}}" class="ai-status">正在识别用户名...</view>
     </view>
   </view>
 
   <view class="form-card">
-    <view class="field-title">订单截图<text class="required">*</text></view>
-    <view class="field-desc">请正面拍摄，要求内容清晰完整，方便AI识别</view>
+    <view class="field-title">{{task.form.orderImageTitle}}<text class="required">*</text></view>
+    <view class="field-desc">{{task.form.orderImageTip}}</view>
     <view class="upload-row">
       <view class="upload-btn" bindtap="chooseOrderImage">
-        <view class="upload-icon">📷</view>
+        <view class="upload-icon">拍</view>
         <view class="upload-text">拍照上传</view>
       </view>
       <view class="upload-btn" bindtap="chooseOrderFromAlbum">
-        <view class="upload-icon">🖼️</view>
-        <view class="upload-text">从相册选择</view>
+        <view class="upload-icon">册</view>
+        <view class="upload-text">相册选择</view>
       </view>
     </view>
 
     <view class="ai-box">
-      <view class="ai-head">AI将根据照片自动识别以下字段</view>
+      <view class="ai-head">AI 自动识别</view>
       <view class="ai-grid">
-        <view class="ai-label">订单号</view>
+        <view class="ai-label">{{task.form.orderFieldLabel}}</view>
         <input class="ai-input" value="{{orderNo}}" placeholder="自动识别或手动填写" bindinput="onOrderNoInput" />
       </view>
+      <view wx:if="{{recognizingOrder}}" class="ai-status">正在识别订单号...</view>
     </view>
   </view>
 
   <view class="form-card">
-    <view class="field-title">充值视频<text class="required">*</text></view>
+    <view class="field-title">{{task.form.videoTitle}}<text class="required">*</text></view>
     <view class="upload-row">
       <view class="upload-btn" bindtap="chooseVideoFromCamera">
-        <view class="upload-icon">🎥</view>
+        <view class="upload-icon">录</view>
         <view class="upload-text">拍摄上传</view>
       </view>
       <view class="upload-btn" bindtap="chooseVideoFromAlbum">
-        <view class="upload-icon">🖼️</view>
-        <view class="upload-text">从相册选择</view>
+        <view class="upload-icon">册</view>
+        <view class="upload-text">相册选择</view>
       </view>
     </view>
     <view wx:if="{{gameIdImagePath || orderImagePath || videoPath}}" class="file-summary">
-      <view wx:if="{{gameIdImagePath}}" class="file-line">已上传游戏ID截图</view>
+      <view wx:if="{{gameIdImagePath}}" class="file-line">已上传用户名截图</view>
       <view wx:if="{{orderImagePath}}" class="file-line">已上传订单截图</view>
       <view wx:if="{{videoPath}}" class="file-line">已上传充值视频</view>
     </view>
-    <button class="primary-btn submit-btn" loading="{{submitting}}" bindtap="submit">提交</button>
-    <view class="submit-tip">提交即授权该表单收集你填写的信息，查看详情</view>
+    <button class="primary-btn submit-btn" loading="{{submitting}}" bindtap="submit">{{task.form.submitButtonText}}</button>
+    <view class="submit-tip">{{task.form.submitTip}}</view>
   </view>
 </view>

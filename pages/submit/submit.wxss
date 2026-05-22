@@ -1,61 +1,63 @@
 .intro {
-  padding: 4rpx 4rpx 20rpx;
+  padding: 6rpx 4rpx 22rpx;
+}
+
+.intro-kicker {
+  color: #007aff;
+  font-size: 24rpx;
+  font-weight: 700;
+  letter-spacing: 0;
+  margin-bottom: 8rpx;
 }
 
 .intro-text {
-  color: #1f2329;
-  font-size: 24rpx;
-  font-weight: 600;
-  line-height: 1.65;
-  text-align: center;
+  color: #1d1d1f;
+  font-size: 28rpx;
+  font-weight: 700;
+  line-height: 1.55;
 }
 
-.task-card {
-  background: #ffffff;
-  border: 1rpx solid #e3e8ef;
-  border-radius: 8rpx;
+.task-card,
+.form-card {
+  background: rgba(255, 255, 255, 0.94);
+  border: 1rpx solid rgba(60, 60, 67, 0.1);
+  border-radius: 16rpx;
+  box-shadow: 0 10rpx 28rpx rgba(0, 0, 0, 0.05);
+  box-sizing: border-box;
   margin-bottom: 18rpx;
-  padding: 24rpx 22rpx;
+  padding: 24rpx;
 }
 
 .task-card-title {
-  color: #1369d8;
-  font-size: 28rpx;
+  color: #1d1d1f;
+  font-size: 32rpx;
   font-weight: 700;
-  line-height: 1.4;
+  line-height: 1.35;
   margin-bottom: 10rpx;
 }
 
 .task-card-desc {
-  color: #1f2329;
-  font-size: 24rpx;
-  line-height: 1.5;
-}
-
-.form-card {
-  background: #ffffff;
-  border: 1rpx solid #e3e8ef;
-  border-radius: 8rpx;
-  margin-bottom: 18rpx;
-  padding: 22rpx;
+  color: rgba(60, 60, 67, 0.7);
+  font-size: 25rpx;
+  line-height: 1.55;
 }
 
 .field-title {
-  color: #1f2329;
-  font-size: 32rpx;
+  color: #1d1d1f;
+  font-size: 30rpx;
   font-weight: 700;
   line-height: 1.35;
 }
 
 .required {
-  color: #e34d59;
+  color: #ff3b30;
   margin-left: 6rpx;
 }
 
 .field-desc {
-  color: #8a8f99;
+  color: rgba(60, 60, 67, 0.62);
   font-size: 24rpx;
-  line-height: 1.5;
+  line-height: 1.45;
   margin-top: 8rpx;
 }
 
@@ -67,86 +69,98 @@
 
 .upload-btn {
   align-items: center;
-  background: #f7fafc;
-  border: 1rpx solid #e5ebf2;
-  border-radius: 8rpx;
+  background: rgba(118, 118, 128, 0.1);
+  border-radius: 14rpx;
   display: flex;
   flex: 1;
-  flex-direction: column;
+  gap: 10rpx;
   justify-content: center;
-  min-height: 156rpx;
+  min-height: 92rpx;
 }
 
 .upload-icon {
-  font-size: 34rpx;
-  line-height: 1;
-  margin-bottom: 10rpx;
+  align-items: center;
+  background: #ffffff;
+  border-radius: 50%;
+  color: #007aff;
+  display: flex;
+  font-size: 22rpx;
+  font-weight: 700;
+  height: 42rpx;
+  justify-content: center;
+  width: 42rpx;
 }
 
 .upload-text {
-  color: #1f2329;
+  color: #1d1d1f;
   font-size: 26rpx;
+  font-weight: 600;
 }
 
 .ai-box {
-  background: #f5faff;
-  border: 1rpx solid #cfe6ff;
-  border-radius: 8rpx;
+  background: rgba(0, 122, 255, 0.08);
+  border-radius: 16rpx;
   margin-top: 16rpx;
   overflow: hidden;
 }
 
 .ai-head {
-  background: #eaf4ff;
-  color: #1677ff;
+  color: #007aff;
   font-size: 24rpx;
-  padding: 14rpx 16rpx;
+  font-weight: 700;
+  padding: 16rpx 18rpx 8rpx;
 }
 
 .ai-grid {
-  align-items: stretch;
+  align-items: center;
   display: flex;
+  padding: 8rpx 14rpx 16rpx;
 }
 
 .ai-label {
-  align-items: center;
-  border-right: 1rpx solid #d8e4f2;
-  color: #1f2329;
-  display: flex;
+  color: rgba(60, 60, 67, 0.72);
   flex: 0 0 150rpx;
-  font-size: 28rpx;
-  padding: 18rpx 16rpx;
+  font-size: 25rpx;
+  font-weight: 600;
 }
 
 .ai-input {
+  background: #ffffff;
+  border-radius: 12rpx;
   box-sizing: border-box;
   flex: 1;
-  height: 78rpx;
+  font-size: 26rpx;
+  height: 68rpx;
   padding: 0 18rpx;
 }
 
+.ai-status {
+  color: #007aff;
+  font-size: 24rpx;
+  padding: 0 18rpx 16rpx;
+}
+
 .file-summary {
-  background: #f7fafc;
-  border: 1rpx solid #e3e8ef;
-  border-radius: 8rpx;
+  background: rgba(52, 199, 89, 0.1);
+  border-radius: 14rpx;
   margin-top: 18rpx;
-  padding: 16rpx 18rpx;
+  padding: 14rpx 18rpx;
 }
 
 .file-line {
-  color: #526071;
+  color: #1f7a3a;
   font-size: 24rpx;
   line-height: 1.6;
 }
 
 .submit-btn {
-  height: 72rpx;
-  line-height: 72rpx;
+  height: 76rpx;
+  line-height: 76rpx;
   margin-top: 18rpx;
 }
 
 .submit-tip {
-  color: #8a8f99;
+  color: rgba(60, 60, 67, 0.58);
   font-size: 22rpx;
   line-height: 1.5;
   margin-top: 12rpx;

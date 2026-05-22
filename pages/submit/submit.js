@@ -13,6 +13,8 @@ Page({
     gameIdImageFileId: "",
     orderImageFileId: "",
     videoFileId: "",
+    recognizingGameId: false,
+    recognizingOrder: false,
     submitting: false
   },
 
@@ -105,6 +107,8 @@ Page({
   },
 
   uploadAndMockRecognize(kind, filePath) {
+    const recognizingKey = kind === "order" ? "recognizingOrder" : "recognizingGameId";
+    this.setData({ [recognizingKey]: true });
     uploadAsset({
       kind,
       filePath
@@ -115,15 +119,31 @@ Page({
         const next = {
           [fileIdKey]: data.fileId || ""
         };
-        if (kind === "gameId" && recognize.gameId) {
-          next.gameId = recognize.gameId;
+        const gameId = recognize.gameId || recognize.username || recognize.value || "";
+        const orderNo = recognize.orderNo || recognize.value || "";
+        if (kind === "gameId" && gameId) {
+          next.gameId = gameId;
         }
-        if (kind === "order" && recognize.orderNo) {
-          next.orderNo = recognize.orderNo;
+        if (kind === "order" && orderNo) {
+          next.orderNo = orderNo;
         }
         this.setData(next);
+        wx.showToast({
+          title: kind === "order"
+            ? (orderNo ? "已识别订单号" : "未识别到订单号")
+            : (gameId ? "已识别用户名" : "未识别到用户名"),
+          icon: "none"
+        });
       })
-      .catch(() => {});
+      .catch(error => {
+        wx.showToast({
+          title: error.message || "AI识别失败",
+          icon: "none"
+        });
+      })
+      .finally(() => {
+        this.setData({ [recognizingKey]: false });
+      });
   },
 
   submit() {

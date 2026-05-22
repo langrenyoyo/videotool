@@ -22,7 +22,19 @@ const tasks = {
     requiredMaterials: [
       "萱桦 ID",
       "充值完成后的录屏视频"
-    ]
+    ],
+    form: {
+      desc: "上传萱桦ID截图，订单截图，充值视频",
+      gameIdImageTitle: "萱桦游戏id截图",
+      gameIdImageTip: "请正面拍摄，要求内容清晰完整，方便AI识别",
+      gameIdFieldLabel: "ID",
+      orderImageTitle: "订单截图",
+      orderImageTip: "请正面拍摄，要求内容清晰完整，方便AI识别",
+      orderFieldLabel: "订单号",
+      videoTitle: "充值视频",
+      submitButtonText: "提交",
+      submitTip: "提交即授权该表单收集你填写的信息，查看详情"
+    }
   }
 };
 

@@ -1,7 +1,7 @@
 <view class="page">
   <view class="hero">
     <view class="hero-main">
-      <view class="code-pill">编码 {{task.code}}</view>
+      <view class="code-pill">编号 {{task.code}}</view>
       <view class="task-title">{{task.title}}</view>
       <view class="hero-meta">更新时间 {{task.updatedAt}}</view>
     </view>
@@ -18,7 +18,6 @@
 
   <view class="panel highlight-section">
     <view class="section-head">
-      <view class="section-mark"></view>
       <view class="section-title">{{task.sectionTitle}}</view>
     </view>
     <view class="content primary-content">{{task.content}}</view>
@@ -26,7 +25,6 @@
 
   <view class="panel section">
     <view class="section-head">
-      <view class="section-mark blue"></view>
       <view class="section-title">任务流程</view>
     </view>
     <view class="timeline">
@@ -42,7 +40,6 @@
 
   <view class="panel section">
     <view class="section-head">
-      <view class="section-mark green"></view>
       <view class="section-title">提交资料</view>
     </view>
     <view class="material-list">
@@ -55,7 +52,6 @@
 
   <view class="panel section">
     <view class="section-head">
-      <view class="section-mark amber"></view>
       <view class="section-title">提交前确认</view>
     </view>
     <view class="warning" wx:for="{{task.warnings}}" wx:key="*this">

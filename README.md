@@ -70,6 +70,9 @@ QINIU_BUCKET=空间名
 QINIU_DOMAIN=https://你的七牛CDN域名
 QINIU_REGION=z0
 QINIU_AI_API_KEY=七牛AI接口Key
+OPENAI_API_KEY=OpenAI API Key
+OPENAI_BASE_URL=https://api.openai.com/v1
+OPENAI_OCR_MODEL=gpt-4.1-mini
 ```
 
-`QINIU_AI_API_KEY` 用于图片 OCR。没有配置时只上传文件，不自动识别。
+图片 OCR 优先使用 `OPENAI_API_KEY`。没有配置 OpenAI 时，才尝试使用 `QINIU_AI_API_KEY`。两个都没有配置时只上传文件，不自动识别。

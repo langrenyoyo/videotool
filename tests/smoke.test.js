@@ -103,6 +103,7 @@ assert.ok(!appJson.pages.includes("pages/admin/admin"), "admin must not be insid
 
 const { settingsToTask } = require("../server/server");
 const { extractFields } = require("../server/qiniu-service");
+const openaiOcr = require("../server/openai-ocr");
 const remoteTask = settingsToTask({
   projectName: "后台项目",
   taskCode: "abc123",
@@ -120,5 +121,6 @@ assert.deepStrictEqual(remoteTask.warnings, ["提醒一", "提醒二"]);
 assert.deepStrictEqual(remoteTask.requiredMaterials, ["资料一", "资料二"]);
 assert.strictEqual(extractFields("游戏ID: ABC12345", "gameId").gameId, "ABC12345");
 assert.strictEqual(extractFields("订单号: NO-987654321", "order").orderNo, "NO-987654321");
+assert.strictEqual(typeof openaiOcr.isEnabled(), "boolean");
 
 console.log("Smoke tests passed");

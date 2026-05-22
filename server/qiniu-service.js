@@ -42,7 +42,14 @@ function isEnabled() {
 
 function publicUrl(key) {
   const { domain } = getConfig();
-  return `${String(domain || "").replace(/\/$/, "")}/${encodeURIComponent(key)}`;
+  const normalizedDomain = /^https?:\/\//i.test(String(domain || ""))
+    ? String(domain || "")
+    : `https://${domain}`;
+  const encodedKey = String(key || "")
+    .split("/")
+    .map(part => encodeURIComponent(part))
+    .join("/");
+  return `${normalizedDomain.replace(/\/$/, "")}/${encodedKey}`;
 }
 
 function uploadBuffer(buffer, options = {}) {
@@ -75,7 +82,7 @@ function uploadBuffer(buffer, options = {}) {
         });
         return;
       }
-      reject(new Error(`七牛上传失败：${info.statusCode}`));
+      reject(new Error(`七牛上传失败：${info.statusCode} ${JSON.stringify(body || {})}`));
     });
   });
 }
@@ -112,7 +119,8 @@ async function recognizeImage(imageUrl, kind) {
     })
   });
   if (!response.ok) {
-    throw new Error(`七牛OCR失败：${response.status}`);
+    const errorText = await response.text();
+    throw new Error(`七牛OCR失败：${response.status} ${errorText}`);
   }
   const data = await response.json();
   const text = data.text || JSON.stringify(data);
