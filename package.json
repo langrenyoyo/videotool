@@ -7,6 +7,7 @@
     "test": "node tests/smoke.test.js"
   },
   "dependencies": {
+    "node-fetch": "^2.7.0",
     "qiniu": "^7.13.0"
   }
 }

@@ -1,15 +1,21 @@
 ﻿const fs = require("fs");
 const http = require("http");
+const crypto = require("crypto");
 const path = require("path");
+const fetch = require("./fetch");
 const openaiOcr = require("./openai-ocr");
 const qiniuService = require("./qiniu-service");
 
 qiniuService.loadEnvFile();
 const PORT = Number(process.env.PORT || 3000);
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "admin";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "bb654321";
+const ADMIN_SESSION_TTL = 7 * 24 * 60 * 60 * 1000;
 const ROOT = path.resolve(__dirname, "..");
 const DATA_DIR = path.join(__dirname, "data");
 const UPLOAD_DIR = path.join(__dirname, "uploads");
 const DB_FILE = path.join(DATA_DIR, "db.json");
+const adminSessions = new Map();
 
 const defaultDb = {
   settings: {
@@ -75,6 +81,58 @@ function sendHtml(res, html) {
     "Content-Type": "text/html; charset=utf-8"
   });
   res.end(html);
+}
+
+function redirect(res, location) {
+  res.writeHead(302, { Location: location });
+  res.end();
+}
+
+function parseCookies(header = "") {
+  return header.split(";").reduce((acc, item) => {
+    const index = item.indexOf("=");
+    if (index < 0) return acc;
+    const key = item.slice(0, index).trim();
+    const value = item.slice(index + 1).trim();
+    if (key) acc[key] = decodeURIComponent(value || "");
+    return acc;
+  }, {});
+}
+
+function getAdminToken(req) {
+  const cookies = parseCookies(req.headers.cookie || "");
+  const token = cookies.admin_sid || "";
+  if (!token) return "";
+  const session = adminSessions.get(token);
+  if (!session) return "";
+  if (session.expiresAt < Date.now()) {
+    adminSessions.delete(token);
+    return "";
+  }
+  return token;
+}
+
+function isAdminAuthed(req) {
+  return Boolean(getAdminToken(req));
+}
+
+function makeAdminSession() {
+  const token = crypto.randomBytes(24).toString("hex");
+  adminSessions.set(token, { expiresAt: Date.now() + ADMIN_SESSION_TTL });
+  return token;
+}
+
+function clearAdminSession(req) {
+  const token = getAdminToken(req);
+  if (token) adminSessions.delete(token);
+}
+
+function setAdminCookie(res, token) {
+  res.setHeader("Set-Cookie", `admin_sid=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${Math.floor(ADMIN_SESSION_TTL / 1000)}`);
+}
+
+function clearAdminCookie(res) {
+  res.setHeader("Set-Cookie", "admin_sid=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0");
 }
 
 function readBody(req) {
@@ -252,6 +310,7 @@ function htmlShell(title, body, script = "") {
     <nav>
       <a href="/admin/settings">前端页面设置</a>
       <a href="/admin/review">审核页面</a>
+      <a href="/admin/logout">退出登录</a>
     </nav>
   </header>
   <main>
@@ -259,6 +318,66 @@ function htmlShell(title, body, script = "") {
   </main>
   <script>
     ${script}
+  </script>
+</body>
+</html>`;
+}
+
+function loginPage() {
+  return `<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>后台登录</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #f5f6f8; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #1f2329; }
+    .panel { width: min(420px, calc(100vw - 32px)); background: #fff; border: 1px solid #e7e9ee; border-radius: 10px; padding: 28px; box-shadow: 0 14px 32px rgba(15, 23, 42, 0.08); }
+    h1 { margin: 0 0 18px; font-size: 22px; }
+    label { display: block; color: #4b5563; font-size: 13px; margin-bottom: 8px; }
+    input { width: 100%; border: 1px solid #d7dce5; border-radius: 6px; font: inherit; padding: 11px 12px; }
+    .field + .field { margin-top: 16px; }
+    button { width: 100%; border: 0; border-radius: 6px; cursor: pointer; font: inherit; font-weight: 600; margin-top: 20px; padding: 11px 16px; background: #1677ff; color: #fff; }
+    .hint { color: #6b7280; font-size: 13px; line-height: 1.6; margin-top: 14px; }
+    .error { color: #c23a2b; font-size: 13px; margin-top: 12px; min-height: 18px; }
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <h1>后台登录</h1>
+    <div class="field">
+      <label for="username">用户名</label>
+      <input id="username" autocomplete="username" placeholder="请输入用户名">
+    </div>
+    <div class="field">
+      <label for="password">密码</label>
+      <input id="password" type="password" autocomplete="current-password" placeholder="请输入密码">
+    </div>
+    <button onclick="login()">登录</button>
+    <div id="error" class="error"></div>
+  </div>
+  <script>
+    async function login() {
+      const username = document.querySelector('#username').value.trim();
+      const password = document.querySelector('#password').value;
+      const errorBox = document.querySelector('#error');
+      errorBox.textContent = '';
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        errorBox.textContent = data.message || '登录失败';
+        return;
+      }
+      location.href = '/admin';
+    }
+    document.querySelector('#password').addEventListener('keydown', event => {
+      if (event.key === 'Enter') login();
+    });
   </script>
 </body>
 </html>`;
@@ -546,7 +665,7 @@ function reviewPage() {
       document.querySelector('#approvedCount').textContent = stats.approved;
     }
     async function loadData() {
-      const submissions = await request('/api/submissions');
+      const submissions = await request('/api/admin/submissions');
       const filters = getFilters();
       syncUrl(filters);
       const filtered = applyFilters(submissions, filters);
@@ -634,7 +753,7 @@ function reviewDetailPage(userId, filters = {}) {
       });
     }
     async function loadData() {
-      const submissions = applyFilters(await request('/api/submissions?xuanhuaId=${encodeURIComponent(userId || "")}'));
+      const submissions = applyFilters(await request('/api/admin/submissions?xuanhuaId=${encodeURIComponent(userId || "")}'));
       const list = document.querySelector('#list');
       if (!submissions.length) {
         list.innerHTML = '<section class="empty">暂无符合条件的提交资料</section>';
@@ -674,7 +793,7 @@ function reviewDetailPage(userId, filters = {}) {
     }
     async function review(id, status) {
       const reviewRemark = document.querySelector('#remark-' + id).value;
-      await request('/api/submissions/' + encodeURIComponent(id) + '/review', {
+      await request('/api/admin/submissions/' + encodeURIComponent(id) + '/review', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status, reviewRemark })
@@ -723,6 +842,45 @@ async function handle(req, res) {
     sendJson(res, 200, {});
     return;
   }
+  if (req.method === "GET" && url.pathname === "/admin/login") {
+    if (isAdminAuthed(req)) {
+      redirect(res, "/admin");
+    } else {
+      sendHtml(res, loginPage());
+    }
+    return;
+  }
+  if (req.method === "GET" && url.pathname === "/admin/logout") {
+    clearAdminSession(req);
+    clearAdminCookie(res);
+    redirect(res, "/admin/login");
+    return;
+  }
+  if (req.method === "POST" && url.pathname === "/api/admin/login") {
+    const body = JSON.parse((await readBody(req)).toString("utf8") || "{}");
+    const username = String(body.username || "").trim();
+    const password = String(body.password || "");
+    if (username !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
+      sendJson(res, 401, { message: "用户名或密码错误" });
+      return;
+    }
+    const token = makeAdminSession();
+    setAdminCookie(res, token);
+    sendJson(res, 200, { ok: true });
+    return;
+  }
+  if (req.method === "POST" && url.pathname === "/api/admin/logout") {
+    clearAdminSession(req);
+    clearAdminCookie(res);
+    sendJson(res, 200, { ok: true });
+    return;
+  }
+  if (url.pathname.startsWith("/admin/") || url.pathname === "/admin") {
+    if (!isAdminAuthed(req)) {
+      redirect(res, "/admin/login");
+      return;
+    }
+  }
   if (req.method === "GET" && url.pathname === "/admin") {
     sendHtml(res, adminHomePage());
     return;
@@ -761,6 +919,39 @@ async function handle(req, res) {
   }
   if (req.method === "GET" && url.pathname === "/api/task") {
     sendJson(res, 200, settingsToTask(readDb().settings));
+    return;
+  }
+  if (req.method === "GET" && url.pathname === "/api/admin/submissions") {
+    if (!isAdminAuthed(req)) {
+      sendJson(res, 401, { message: "请先登录" });
+      return;
+    }
+    const xuanhuaId = url.searchParams.get("xuanhuaId");
+    const db = readDb();
+    const list = xuanhuaId
+      ? db.submissions.filter(item => item.gameId === xuanhuaId || item.xuanhuaId === xuanhuaId)
+      : db.submissions;
+    sendJson(res, 200, list.map(item => withAssetUrls(req, item)));
+    return;
+  }
+  const adminReviewMatch = /^\/api\/admin\/submissions\/([^/]+)\/review$/.exec(url.pathname);
+  if (req.method === "POST" && adminReviewMatch) {
+    if (!isAdminAuthed(req)) {
+      sendJson(res, 401, { message: "请先登录" });
+      return;
+    }
+    const body = JSON.parse((await readBody(req)).toString("utf8") || "{}");
+    const db = readDb();
+    const target = db.submissions.find(item => item.id === adminReviewMatch[1]);
+    if (!target) {
+      sendJson(res, 404, { message: "提交记录不存在" });
+      return;
+    }
+    target.status = body.status === "rejected" ? "rejected" : "approved";
+    target.reviewRemark = String(body.reviewRemark || "").trim();
+    target.reviewedAt = Date.now();
+    writeDb(db);
+    sendJson(res, 200, withAssetUrls(req, target));
     return;
   }
   if (req.method === "POST" && url.pathname === "/api/files") {
@@ -809,6 +1000,10 @@ async function handle(req, res) {
     return;
   }
   if (req.method === "POST" && url.pathname === "/api/settings") {
+    if (!isAdminAuthed(req)) {
+      sendJson(res, 401, { message: "请先登录" });
+      return;
+    }
     const body = JSON.parse((await readBody(req)).toString("utf8") || "{}");
     const db = readDb();
     db.settings = normalizeSettings({
@@ -874,6 +1069,10 @@ async function handle(req, res) {
   }
   const reviewMatch = /^\/api\/submissions\/([^/]+)\/review$/.exec(url.pathname);
   if (req.method === "POST" && reviewMatch) {
+    if (!isAdminAuthed(req)) {
+      sendJson(res, 401, { message: "请先登录" });
+      return;
+    }
     const body = JSON.parse((await readBody(req)).toString("utf8") || "{}");
     const db = readDb();
     const target = db.submissions.find(item => item.id === reviewMatch[1]);

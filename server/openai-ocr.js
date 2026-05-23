@@ -1,3 +1,4 @@
+const fetch = require("./fetch");
 const { extractFields } = require("./qiniu-service");
 
 function getConfig() {
