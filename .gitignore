@@ -3,6 +3,7 @@ miniprogram_npm/
 .DS_Store
 *.log
 .env
+project.private.config.json
 server/data/db.json
 server/uploads/*
 !server/uploads/.gitkeep

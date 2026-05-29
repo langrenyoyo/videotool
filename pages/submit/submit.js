@@ -5,6 +5,11 @@ const { validateSubmission } = require("../../utils/submissions");
 Page({
   data: {
     task: getTask("qf4M84e"),
+    projects: [],
+    projectNames: [],
+    selectedProjectIndex: 0,
+    selectedProjectId: "",
+    selectedProjectName: "",
     gameIdImagePath: "",
     orderImagePath: "",
     videoPath: "",
@@ -19,16 +24,46 @@ Page({
   },
 
   onLoad(query) {
+    const localTask = getTask(query.code);
+    const localProjects = [{ id: "default", name: localTask.title }];
     this.setData({
-      task: getTask(query.code)
+      task: localTask,
+      projects: localProjects,
+      projectNames: localProjects.map(item => item.name),
+      selectedProjectIndex: 0,
+      selectedProjectId: localProjects[0].id,
+      selectedProjectName: localProjects[0].name
     });
     requestTask()
       .then(task => {
         if (task && task.title) {
-          this.setData({ task });
+          const projects = Array.isArray(task.projects) && task.projects.length
+            ? task.projects
+            : [{ id: "default", name: task.title }];
+          this.setData({
+            task,
+            projects,
+            projectNames: projects.map(item => item.name),
+            selectedProjectIndex: 0,
+            selectedProjectId: projects[0].id,
+            selectedProjectName: projects[0].name
+          });
         }
       })
       .catch(() => {});
+  },
+
+  onProjectChange(event) {
+    const index = Number(event.detail.value || 0);
+    const project = this.data.projects[index];
+    if (!project) {
+      return;
+    }
+    this.setData({
+      selectedProjectIndex: index,
+      selectedProjectId: project.id,
+      selectedProjectName: project.name
+    });
   },
 
   onGameIdInput(event) {
@@ -149,7 +184,9 @@ Page({
   submit() {
     const input = {
       taskCode: this.data.task.code,
-      taskTitle: this.data.task.title,
+      projectId: this.data.selectedProjectId,
+      projectName: this.data.selectedProjectName,
+      taskTitle: this.data.selectedProjectName || this.data.task.title,
       gameId: this.data.gameId,
       orderNo: this.data.orderNo,
       gameIdImagePath: this.data.gameIdImagePath,

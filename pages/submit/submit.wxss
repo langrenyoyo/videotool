@@ -61,6 +61,29 @@
   margin-top: 8rpx;
 }
 
+.select-row {
+  align-items: center;
+  background: rgba(118, 118, 128, 0.1);
+  border-radius: 14rpx;
+  display: flex;
+  justify-content: space-between;
+  margin-top: 16rpx;
+  min-height: 78rpx;
+  padding: 0 20rpx;
+}
+
+.select-text {
+  color: #1d1d1f;
+  font-size: 27rpx;
+  font-weight: 600;
+}
+
+.select-arrow {
+  color: rgba(60, 60, 67, 0.42);
+  font-size: 46rpx;
+  line-height: 1;
+}
+
 .upload-row {
   display: flex;
   gap: 14rpx;

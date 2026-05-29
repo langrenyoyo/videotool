@@ -10,6 +10,17 @@
   </view>
 
   <view class="form-card">
+    <view class="field-title">选择项目<text class="required">*</text></view>
+    <view class="field-desc">请选择本次提交对应的项目名称</view>
+    <picker mode="selector" range="{{projectNames}}" value="{{selectedProjectIndex}}" bindchange="onProjectChange">
+      <view class="select-row">
+        <view class="select-text">{{selectedProjectName || '请选择项目名称'}}</view>
+        <view class="select-arrow">›</view>
+      </view>
+    </picker>
+  </view>
+
+  <view class="form-card">
     <view class="field-title">{{task.form.gameIdImageTitle}}<text class="required">*</text></view>
     <view class="field-desc">{{task.form.gameIdImageTip}}</view>
     <view class="upload-row">

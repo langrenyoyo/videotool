@@ -1,7 +1,40 @@
 {
   "description": "任务说明与视频提交小程序",
   "packOptions": {
-    "ignore": []
+    "ignore": [
+      {
+        "type": "folder",
+        "value": "assets"
+      },
+      {
+        "type": "folder",
+        "value": "server"
+      },
+      {
+        "type": "folder",
+        "value": "tests"
+      },
+      {
+        "type": "folder",
+        "value": "node_modules"
+      },
+      {
+        "type": "file",
+        "value": "package.json"
+      },
+      {
+        "type": "file",
+        "value": "package-lock.json"
+      },
+      {
+        "type": "file",
+        "value": ".env.example"
+      },
+      {
+        "type": "file",
+        "value": "README.md"
+      }
+    ]
   },
   "setting": {
     "urlCheck": true,
@@ -13,7 +46,7 @@
   },
   "compileType": "miniprogram",
   "libVersion": "3.7.12",
-  "appid": "touristappid",
+  "appid": "wx3d2dd35460d91bc2",
   "projectname": "task-submit-miniprogram",
   "condition": {
     "miniprogram": {

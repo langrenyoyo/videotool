@@ -206,9 +206,29 @@ function statusText(status) {
 }
 
 function normalizeSettings(settings) {
-  return {
+  const merged = {
     ...defaultDb.settings,
     ...settings
+  };
+  const rawProjects = Array.isArray(merged.projects) ? merged.projects : [];
+  const projects = rawProjects
+    .map(item => ({
+      id: String(item.id || "").trim(),
+      name: String(item.name || "").trim()
+    }))
+    .filter(item => item.name);
+  if (!projects.length) {
+    projects.push({
+      id: `project_${Date.now()}`,
+      name: String(merged.projectName || defaultDb.settings.projectName).trim()
+    });
+  }
+  if (!merged.projectName && projects[0]) {
+    merged.projectName = projects[0].name;
+  }
+  return {
+    ...merged,
+    projects
   };
 }
 
@@ -221,6 +241,7 @@ function settingsToTask(settings) {
   return {
     code: safe.taskCode,
     title: safe.projectName,
+    projects: safe.projects,
     sectionTitle: safe.sectionTitle,
     updatedAt: safe.updatedAt,
     amountText: safe.amountText,
@@ -261,6 +282,9 @@ function htmlShell(title, body, script = "") {
     section, article { background: #fff; border: 1px solid #e7e9ee; border-radius: 8px; padding: 20px; }
     .settings { display: grid; gap: 14px; }
     .settings-grid { display: grid; grid-template-columns: 1fr 180px 180px; gap: 12px; }
+    .project-row { align-items: center; display: grid; gap: 12px; grid-template-columns: 1fr auto auto; }
+    .project-row + .project-row { margin-top: 10px; }
+    .project-list { display: grid; gap: 10px; }
     label { display: block; color: #4b5563; font-size: 13px; margin-bottom: 8px; }
     input, select, textarea { width: 100%; border: 1px solid #d7dce5; border-radius: 6px; font: inherit; padding: 10px 12px; }
     button { border: 0; border-radius: 6px; cursor: pointer; font: inherit; font-weight: 600; padding: 10px 16px; }
@@ -406,9 +430,17 @@ function settingsPage() {
   return htmlShell("前端页面设置", `
     <section class="settings">
       <h2 style="margin:0;font-size:18px;">小程序前端信息</h2>
+      <div>
+        <label>项目名称列表</label>
+        <div id="projectsList" class="project-list"></div>
+        <div class="actions">
+          <input id="newProjectName" placeholder="请输入新项目名称">
+          <button class="secondary" onclick="addProject()">添加项目</button>
+        </div>
+      </div>
       <div class="settings-grid">
         <div>
-          <label for="projectName">项目名称</label>
+          <label for="projectName">默认项目名称</label>
           <input id="projectName" placeholder="请输入项目名称">
         </div>
         <div>
@@ -489,6 +521,7 @@ function settingsPage() {
     </section>
   `, `
     const statusText = ${statusText.toString()};
+    let projects = [];
     async function request(url, options) {
       const res = await fetch(url, options);
       const data = await res.json();
@@ -497,6 +530,7 @@ function settingsPage() {
     }
     async function loadData() {
       const settings = await request('/api/settings');
+      projects = Array.isArray(settings.projects) ? settings.projects : [];
       document.querySelector('#projectName').value = settings.projectName || '';
       document.querySelector('#amountText').value = settings.amountText || '';
       document.querySelector('#sectionTitle').value = settings.sectionTitle || '';
@@ -514,13 +548,66 @@ function settingsPage() {
       document.querySelector('#videoTitle').value = settings.videoTitle || '';
       document.querySelector('#submitButtonText').value = settings.submitButtonText || '';
       document.querySelector('#submitTip').value = settings.submitTip || '';
+      renderProjects();
+    }
+    function renderProjects() {
+      const list = document.querySelector('#projectsList');
+      if (!projects.length) {
+        list.innerHTML = '<div class="empty">暂无项目，请先添加项目名称</div>';
+        return;
+      }
+      list.innerHTML = projects.map(item => \`
+        <div class="project-row">
+          <input value="\${escapeHtml(item.name)}" data-id="\${escapeHtml(item.id)}" oninput="updateProjectName('\${escapeJs(item.id)}', this.value)">
+          <button class="secondary" onclick="setDefaultProject('\${escapeJs(item.id)}')">设为默认</button>
+          <button class="danger" onclick="deleteProject('\${escapeJs(item.id)}')">删除</button>
+        </div>
+      \`).join('');
+    }
+    function addProject() {
+      const input = document.querySelector('#newProjectName');
+      const name = input.value.trim();
+      if (!name) return;
+      projects.push({ id: 'project_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7), name });
+      if (!document.querySelector('#projectName').value.trim()) {
+        document.querySelector('#projectName').value = name;
+      }
+      input.value = '';
+      renderProjects();
+    }
+    function updateProjectName(id, name) {
+      projects = projects.map(item => item.id === id ? { ...item, name } : item);
+    }
+    function setDefaultProject(id) {
+      const target = projects.find(item => item.id === id);
+      if (target) document.querySelector('#projectName').value = target.name;
+    }
+    function deleteProject(id) {
+      if (!confirm('确定删除这个项目名称吗？')) return;
+      projects = projects.filter(item => item.id !== id);
+      const current = document.querySelector('#projectName').value.trim();
+      if (!projects.some(item => item.name === current)) {
+        document.querySelector('#projectName').value = projects[0] ? projects[0].name : '';
+      }
+      renderProjects();
     }
     async function saveSettings() {
+      const cleanProjects = projects
+        .map(item => ({ id: item.id, name: String(item.name || '').trim() }))
+        .filter(item => item.name);
+      const defaultProjectName = document.querySelector('#projectName').value.trim();
+      if (defaultProjectName && !cleanProjects.some(item => item.name === defaultProjectName)) {
+        cleanProjects.unshift({
+          id: 'project_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+          name: defaultProjectName
+        });
+      }
       await request('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          projectName: document.querySelector('#projectName').value,
+          projectName: defaultProjectName,
+          projects: cleanProjects,
           amountText: document.querySelector('#amountText').value,
           sectionTitle: document.querySelector('#sectionTitle').value,
           content: document.querySelector('#content').value,
@@ -541,6 +628,14 @@ function settingsPage() {
       });
       alert('已保存');
       loadData();
+    }
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, char => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[char]));
+    }
+    function escapeJs(value) {
+      return String(value).replace(/\\\\/g, '\\\\\\\\').replace(/'/g, "\\\\'");
     }
     loadData().catch(error => alert(error.message));
   `);
@@ -605,16 +700,21 @@ function reviewPage() {
       for (const item of submissions) {
         const userId = item.gameId || item.xuanhuaId || '未识别用户';
         if (!map.has(userId)) {
-          map.set(userId, { userId, total: 0, pending: 0, approved: 0, rejected: 0, latestAt: 0 });
+        map.set(userId, { userId, total: 0, pending: 0, approved: 0, rejected: 0, latestAt: 0 });
         }
         const group = map.get(userId);
         const status = item.status || 'pending';
         group.total += 1;
+        if (!group.projectNames) group.projectNames = new Set();
+        if (item.projectName || item.taskTitle) group.projectNames.add(item.projectName || item.taskTitle);
         if (typeof group[status] !== 'number') group[status] = 0;
         group[status] += 1;
         group.latestAt = Math.max(group.latestAt, item.createdAt || 0);
       }
-      return Array.from(map.values()).sort((a, b) => b.latestAt - a.latestAt);
+      return Array.from(map.values()).map(item => ({
+        ...item,
+        projectNamesText: Array.from(item.projectNames || []).join('、')
+      })).sort((a, b) => b.latestAt - a.latestAt);
     }
     function getFilters() {
       return {
@@ -686,6 +786,7 @@ function reviewPage() {
           <div class="record-head">
             <div>
               <div class="title">用户ID：\${escapeHtml(item.userId)}</div>
+              <div class="muted">项目：\${escapeHtml(item.projectNamesText || '-')}</div>
               <div class="muted">共 \${item.total} 单 · 待审核 \${item.pending} · 已通过 \${item.approved} · 已驳回 \${item.rejected} · 最近提交 \${item.latestAt ? new Date(item.latestAt).toLocaleString() : '-'}</div>
             </div>
             <a class="primary" style="text-decoration:none;" href="/admin/review-detail?userId=\${encodeURIComponent(item.userId)}\${filterSuffix}">查看详情</a>
@@ -763,7 +864,7 @@ function reviewDetailPage(userId, filters = {}) {
         <article>
           <div class="record-head">
             <div>
-              <div class="title">\${escapeHtml(item.taskTitle || '')}</div>
+              <div class="title">\${escapeHtml(item.projectName || item.taskTitle || '')}</div>
               <div class="muted">提交时间：\${new Date(item.createdAt).toLocaleString()}</div>
             </div>
             <div class="status \${item.status || 'pending'}">\${statusText(item.status)}</div>
@@ -771,6 +872,7 @@ function reviewDetailPage(userId, filters = {}) {
           <div class="grid">
             <div>
               <div class="field-grid">
+                <div class="field-line"><div class="field-name">项目名称</div><div class="field-value">\${escapeHtml(item.projectName || item.taskTitle || '')}</div></div>
                 <div class="field-line"><div class="field-name">用户名</div><div class="field-value">\${escapeHtml(item.gameId || '')}</div></div>
                 <div class="field-line"><div class="field-name">订单号</div><div class="field-value">\${escapeHtml(item.orderNo || '')}</div></div>
               </div>
@@ -1009,6 +1111,12 @@ async function handle(req, res) {
     db.settings = normalizeSettings({
       ...db.settings,
       projectName: String(body.projectName || "").trim() || defaultDb.settings.projectName,
+      projects: Array.isArray(body.projects)
+        ? body.projects.map(item => ({
+          id: String(item.id || "").trim() || `project_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          name: String(item.name || "").trim()
+        })).filter(item => item.name)
+        : db.settings.projects,
       amountText: String(body.amountText || "").trim() || defaultDb.settings.amountText,
       sectionTitle: String(body.sectionTitle || "").trim() || defaultDb.settings.sectionTitle,
       content: String(body.content || "").trim() || defaultDb.settings.content,
@@ -1051,7 +1159,9 @@ async function handle(req, res) {
     const submission = {
       id,
       taskCode: body.taskCode || "",
-      taskTitle: body.taskTitle || db.settings.projectName,
+      projectId: String(body.projectId || "").trim(),
+      projectName: String(body.projectName || body.taskTitle || db.settings.projectName || "").trim(),
+      taskTitle: String(body.taskTitle || body.projectName || db.settings.projectName || "").trim(),
       xuanhuaId: String(body.gameId || "").trim(),
       gameId: String(body.gameId || "").trim(),
       orderNo: String(body.orderNo || "").trim(),
