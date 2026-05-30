@@ -88,6 +88,46 @@ function uploadBuffer(buffer, options = {}) {
   });
 }
 
+function trimToLastLetterOrDigit(value) {
+  const text = String(value || "").trim();
+  const match = /[A-Za-z0-9](?![\s\S]*[A-Za-z0-9])/.exec(text);
+  return match ? text.slice(0, match.index + 1).trim() : "";
+}
+
+function firstFieldValue(text, labels, pattern) {
+  for (const label of labels) {
+    const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const match = text.match(new RegExp(`${escaped}[:：#\\s]*(${pattern})`, "i"));
+    if (match && match[1]) {
+      return match[1].trim();
+    }
+  }
+  return "";
+}
+
+function extractGameId(text) {
+  const compact = String(text || "").replace(/\s+/g, " ");
+  const username = firstFieldValue(
+    compact,
+    ["用户名", "用户名称", "昵称", "账号"],
+    "[A-Za-z0-9_\\-\\u4e00-\\u9fa5]{2,}"
+  );
+  if (username) {
+    return username;
+  }
+
+  const idValue = firstFieldValue(
+    compact,
+    ["停车智管ID", "用户ID", "游戏ID", "ID", "Id", "id"],
+    "[A-Za-z0-9_\\-\\.·…*]+"
+  );
+  if (idValue) {
+    return trimToLastLetterOrDigit(idValue);
+  }
+
+  return trimToLastLetterOrDigit(compact.match(/\b[A-Za-z0-9_-]{5,}\b/)?.[0] || "");
+}
+
 function extractFields(text, kind) {
   const compact = String(text || "").replace(/\s+/g, " ");
   if (kind === "order") {
@@ -96,10 +136,8 @@ function extractFields(text, kind) {
       orderNo: match ? match[1] || match[0] : ""
     };
   }
-  const match = compact.match(/(?:用户名|用户名称|昵称|账号|游戏ID|ID|Id|id)[:：#\s]*([A-Za-z0-9_\-\u4e00-\u9fa5]{2,})/)
-    || compact.match(/\b[A-Za-z0-9_-]{5,}\b/);
   return {
-    gameId: match ? match[1] || match[0] : ""
+    gameId: extractGameId(compact)
   };
 }
 

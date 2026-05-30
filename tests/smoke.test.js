@@ -120,6 +120,9 @@ assert.deepStrictEqual(remoteTask.steps, ["第一步", "第二步"]);
 assert.deepStrictEqual(remoteTask.warnings, ["提醒一", "提醒二"]);
 assert.deepStrictEqual(remoteTask.requiredMaterials, ["资料一", "资料二"]);
 assert.strictEqual(extractFields("游戏ID: ABC12345", "gameId").gameId, "ABC12345");
+assert.strictEqual(extractFields("用户名: 张三 ID: ABC12345", "gameId").gameId, "张三");
+assert.strictEqual(extractFields("停车智管ID: ABC12345…", "gameId").gameId, "ABC12345");
+assert.strictEqual(extractFields("用户ID: XY99***", "gameId").gameId, "XY99");
 assert.strictEqual(extractFields("订单号: NO-987654321", "order").orderNo, "NO-987654321");
 assert.strictEqual(typeof openaiOcr.isEnabled(), "boolean");
 
