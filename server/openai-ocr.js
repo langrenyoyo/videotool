@@ -63,6 +63,11 @@ async function recognizeImage(imageUrl, kind) {
   if (!apiKey) {
     return {};
   }
+  const timeoutMs = Number(process.env.OPENAI_OCR_TIMEOUT_MS || 12000);
+  const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+  const timeout = controller
+    ? setTimeout(() => controller.abort(), timeoutMs)
+    : null;
   const prompt = kind === "order"
     ? [
       "你是表单图片 OCR 字段提取器。",
@@ -90,30 +95,44 @@ async function recognizeImage(imageUrl, kind) {
       "JSON 格式：{\"rawText\":\"图片中能读到的文字\",\"gameId\":\"\"}"
     ].join("\n");
 
-  const response = await fetch(`${baseUrl}/responses`, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      model,
-      input: [
-        {
-          role: "user",
-          content: [
-            { type: "input_text", text: prompt },
-            { type: "input_image", image_url: imageUrl, detail: "high" }
-          ]
-        }
-      ],
-      text: {
-        format: {
-          type: "json_object"
-        }
-      }
-    })
-  });
+  let response;
+  try {
+    response = await fetch(`${baseUrl}/responses`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      },
+      signal: controller ? controller.signal : undefined,
+      body: JSON.stringify({
+        model,
+        input: [
+          {
+            role: "user",
+            content: [
+              { type: "input_text", text: prompt },
+              { type: "input_image", image_url: imageUrl, detail: process.env.OPENAI_OCR_IMAGE_DETAIL || "low" }
+            ]
+          }
+        ],
+        text: {
+          format: {
+            type: "json_object"
+          }
+        },
+        max_output_tokens: 300
+      })
+    });
+  } catch (error) {
+    if (error && error.name === "AbortError") {
+      throw new Error(`OpenAI OCR超时：${timeoutMs}ms`);
+    }
+    throw error;
+  } finally {
+    if (timeout) {
+      clearTimeout(timeout);
+    }
+  }
 
   if (!response.ok) {
     const errorText = await response.text();

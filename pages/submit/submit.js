@@ -102,6 +102,7 @@ Page({
     wx.chooseMedia({
       count: 1,
       mediaType: ["image"],
+      sizeType: ["compressed"],
       sourceType: sourceType ? [sourceType] : useCamera ? ["camera"] : ["album", "camera"],
       success: res => {
         const file = res.tempFiles && res.tempFiles[0];
@@ -112,8 +113,31 @@ Page({
         this.setData({
           [pathKey]: file.tempFilePath
         });
-        this.uploadAndMockRecognize(kind, file.tempFilePath);
+        this.compressImage(file.tempFilePath)
+          .then(compressedPath => {
+            this.setData({
+              [pathKey]: compressedPath
+            });
+            this.uploadAndMockRecognize(kind, compressedPath);
+          })
+          .catch(() => {
+            this.uploadAndMockRecognize(kind, file.tempFilePath);
+          });
       }
+    });
+  },
+
+  compressImage(filePath) {
+    if (!wx.compressImage) {
+      return Promise.resolve(filePath);
+    }
+    return new Promise((resolve, reject) => {
+      wx.compressImage({
+        src: filePath,
+        quality: 55,
+        success: res => resolve(res.tempFilePath || filePath),
+        fail: reject
+      });
     });
   },
 
