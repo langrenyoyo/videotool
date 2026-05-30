@@ -15,6 +15,9 @@ function isEnabled() {
 
 function safeParseJson(text) {
   const trimmed = String(text || "").trim();
+  if (!trimmed) {
+    return {};
+  }
   try {
     return JSON.parse(trimmed);
   } catch (error) {
@@ -34,7 +37,7 @@ function cleanExtractedValue(value, kind) {
   const forbidden = kind === "order"
     ? ["订单号", "订单编号", "订单", "单号"]
     : ["ID", "Id", "id", "游戏ID", "账号", "用户名", "用户名称", "昵称", "用户ID"];
-  if (forbidden.includes(cleaned)) {
+  if (forbidden.includes(cleaned) || forbidden.some(label => cleaned.startsWith(`${label}:`) || cleaned.startsWith(`${label}：`))) {
     return "";
   }
   return cleaned;
@@ -118,6 +121,9 @@ async function recognizeImage(imageUrl, kind) {
   const data = await response.json();
   const text = outputTextFromResponse(data);
   const parsed = safeParseJson(text);
+  if (!text.trim() && !parsed.rawText) {
+    throw new Error("OpenAI OCR未返回可解析文本");
+  }
   const extracted = {
     ...extractFields(parsed.rawText || text, kind),
     ...parsed

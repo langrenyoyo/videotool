@@ -91,12 +91,13 @@ function uploadBuffer(buffer, options = {}) {
 function extractFields(text, kind) {
   const compact = String(text || "").replace(/\s+/g, " ");
   if (kind === "order") {
-    const match = compact.match(/(?:订单号|订单编号|订单|单号)[:：\s]*([A-Za-z0-9-]{6,})/) || compact.match(/\b[A-Za-z0-9-]{10,}\b/);
+    const match = compact.match(/(?:订单号|订单编号|订单|单号)[:：#\s]*([A-Za-z0-9_-]{6,})/) || compact.match(/\b[A-Za-z0-9_-]{10,}\b/);
     return {
       orderNo: match ? match[1] || match[0] : ""
     };
   }
-  const match = compact.match(/(?:ID|Id|id|游戏ID|账号)[:：\s]*([A-Za-z0-9_-]{3,})/) || compact.match(/\b[A-Za-z0-9_-]{5,}\b/);
+  const match = compact.match(/(?:用户名|用户名称|昵称|账号|游戏ID|ID|Id|id)[:：#\s]*([A-Za-z0-9_\-\u4e00-\u9fa5]{2,})/)
+    || compact.match(/\b[A-Za-z0-9_-]{5,}\b/);
   return {
     gameId: match ? match[1] || match[0] : ""
   };

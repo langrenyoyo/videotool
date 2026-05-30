@@ -912,15 +912,22 @@ function reviewDetailPage(userId, filters = {}) {
 }
 
 function withVideoUrl(req, item) {
-  const host = req.headers.host || `127.0.0.1:${PORT}`;
   return {
     ...item,
-    videoUrl: item.videoFile ? `http://${host}/uploads/${encodeURIComponent(item.videoFile)}` : ""
+    videoUrl: item.videoFile ? `${publicBaseUrl(req)}/uploads/${encodeURIComponent(item.videoFile)}` : ""
   };
 }
 
+function publicBaseUrl(req) {
+  const proto = String(req.headers["x-forwarded-proto"] || "").split(",")[0].trim()
+    || (req.socket && req.socket.encrypted ? "https" : "http");
+  const host = String(req.headers["x-forwarded-host"] || req.headers.host || `127.0.0.1:${PORT}`)
+    .split(",")[0]
+    .trim();
+  return `${proto}://${host}`;
+}
+
 function withAssetUrls(req, item) {
-  const host = req.headers.host || `127.0.0.1:${PORT}`;
   const assetUrl = file => {
     if (!file) {
       return "";
@@ -928,7 +935,7 @@ function withAssetUrls(req, item) {
     if (/^https?:\/\//i.test(file)) {
       return file;
     }
-    return `http://${host}/uploads/${encodeURIComponent(file)}`;
+    return `${publicBaseUrl(req)}/uploads/${encodeURIComponent(file)}`;
   };
   return {
     ...item,
@@ -1070,6 +1077,7 @@ async function handle(req, res) {
     const fileName = `${id}${ext}`;
     let stored = null;
     let recognize = {};
+    let recognizeError = "";
     try {
       stored = await qiniuService.uploadBuffer(file.buffer, {
         key: `task-submit/${kind}/${fileName}`
@@ -1081,7 +1089,7 @@ async function handle(req, res) {
       fs.writeFileSync(path.join(UPLOAD_DIR, fileName), file.buffer);
       stored = {
         key: fileName,
-        url: `http://${req.headers.host || `127.0.0.1:${PORT}`}/uploads/${encodeURIComponent(fileName)}`
+        url: `${publicBaseUrl(req)}/uploads/${encodeURIComponent(fileName)}`
       };
     }
     if (kind === "gameId" || kind === "order") {
@@ -1090,6 +1098,7 @@ async function handle(req, res) {
           ? await openaiOcr.recognizeImage(stored.url, kind)
           : await qiniuService.recognizeImage(stored.url, kind);
       } catch (error) {
+        recognizeError = error.message || "OCR识别失败";
         console.error("OCR识别失败：", error.message);
       }
     }
@@ -1097,7 +1106,8 @@ async function handle(req, res) {
       fileId: stored.url,
       key: stored.key,
       url: stored.url,
-      recognize
+      recognize,
+      recognizeError
     });
     return;
   }

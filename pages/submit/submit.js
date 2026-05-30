@@ -163,6 +163,13 @@ Page({
           next.orderNo = orderNo;
         }
         this.setData(next);
+        if (data.recognizeError) {
+          wx.showToast({
+            title: data.recognizeError,
+            icon: "none"
+          });
+          return;
+        }
         wx.showToast({
           title: kind === "order"
             ? (orderNo ? "已识别订单号" : "未识别到订单号")

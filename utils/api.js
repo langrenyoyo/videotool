@@ -1,5 +1,12 @@
 const API_BASE = "https://video.heshan1.shop";
 
+function errorMessage(error, fallback) {
+  if (!error) {
+    return fallback;
+  }
+  return error.message || error.errMsg || fallback;
+}
+
 function request(options) {
   return new Promise((resolve, reject) => {
     wx.request({
@@ -14,7 +21,7 @@ function request(options) {
           reject(new Error((res.data && res.data.message) || "请求失败"));
         }
       },
-      fail: reject
+      fail: error => reject(new Error(errorMessage(error, "网络请求失败")))
     });
   });
 }
@@ -54,7 +61,7 @@ function uploadAsset(input) {
           reject(new Error(data.message || "上传失败"));
         }
       },
-      fail: reject
+      fail: error => reject(new Error(errorMessage(error, "文件上传失败，请检查网络或后台服务")))
     });
   });
 }
