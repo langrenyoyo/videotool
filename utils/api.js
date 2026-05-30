@@ -1,4 +1,5 @@
 const API_BASE = "https://video.heshan1.shop";
+const BUILD_TAG = "api-domain-20260530";
 
 function errorMessage(error, fallback) {
   if (!error) {
@@ -40,8 +41,10 @@ function requestTask() {
 
 function uploadAsset(input) {
   return new Promise((resolve, reject) => {
+    const uploadUrl = `${API_BASE}/api/files?kind=${encodeURIComponent(input.kind || "asset")}`;
+    console.log("[uploadAsset]", BUILD_TAG, uploadUrl);
     wx.uploadFile({
-      url: `${API_BASE}/api/files?kind=${encodeURIComponent(input.kind || "asset")}`,
+      url: uploadUrl,
       filePath: input.filePath,
       name: "file",
       formData: {
@@ -61,7 +64,14 @@ function uploadAsset(input) {
           reject(new Error(data.message || "上传失败"));
         }
       },
-      fail: error => reject(new Error(errorMessage(error, "文件上传失败，请检查网络或后台服务")))
+      fail: error => {
+        const message = errorMessage(error, "文件上传失败，请检查网络或后台服务");
+        if (/domain/i.test(message)) {
+          reject(new Error(`上传域名未生效：${API_BASE}`));
+          return;
+        }
+        reject(new Error(`${message}：${uploadUrl}`));
+      }
     });
   });
 }
@@ -85,6 +95,7 @@ function requestMySubmissions(xuanhuaId) {
 
 module.exports = {
   API_BASE,
+  BUILD_TAG,
   requestSettings,
   requestTask,
   uploadAsset,
