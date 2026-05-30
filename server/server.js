@@ -695,26 +695,8 @@ function reviewPage() {
       if (!res.ok) throw new Error(data.message || '请求失败');
       return data;
     }
-    function groupByUser(submissions) {
-      const map = new Map();
-      for (const item of submissions) {
-        const userId = item.gameId || item.xuanhuaId || '未识别用户';
-        if (!map.has(userId)) {
-        map.set(userId, { userId, total: 0, pending: 0, approved: 0, rejected: 0, latestAt: 0 });
-        }
-        const group = map.get(userId);
-        const status = item.status || 'pending';
-        group.total += 1;
-        if (!group.projectNames) group.projectNames = new Set();
-        if (item.projectName || item.taskTitle) group.projectNames.add(item.projectName || item.taskTitle);
-        if (typeof group[status] !== 'number') group[status] = 0;
-        group[status] += 1;
-        group.latestAt = Math.max(group.latestAt, item.createdAt || 0);
-      }
-      return Array.from(map.values()).map(item => ({
-        ...item,
-        projectNamesText: Array.from(item.projectNames || []).join('、')
-      })).sort((a, b) => b.latestAt - a.latestAt);
+    function sortSubmissions(submissions) {
+      return submissions.slice().sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
     }
     function getFilters() {
       return {
@@ -770,9 +752,9 @@ function reviewPage() {
       syncUrl(filters);
       const filtered = applyFilters(submissions, filters);
       updateStats(filtered);
-      const groups = groupByUser(filtered);
+      const records = sortSubmissions(filtered);
       const list = document.querySelector('#list');
-      if (!groups.length) {
+      if (!records.length) {
         list.innerHTML = '<section class="empty">暂无符合条件的提交资料</section>';
         return;
       }
@@ -781,15 +763,18 @@ function reviewPage() {
       if (filters.startDate) filterQuery.set('startDate', filters.startDate);
       if (filters.endDate) filterQuery.set('endDate', filters.endDate);
       const filterSuffix = filterQuery.toString() ? '&' + filterQuery.toString() : '';
-      list.innerHTML = groups.map(item => \`
+      list.innerHTML = records.map(item => \`
         <article>
           <div class="record-head">
             <div>
-              <div class="title">用户ID：\${escapeHtml(item.userId)}</div>
-              <div class="muted">项目：\${escapeHtml(item.projectNamesText || '-')}</div>
-              <div class="muted">共 \${item.total} 单 · 待审核 \${item.pending} · 已通过 \${item.approved} · 已驳回 \${item.rejected} · 最近提交 \${item.latestAt ? new Date(item.latestAt).toLocaleString() : '-'}</div>
+              <div class="title">用户ID：\${escapeHtml(item.gameId || item.xuanhuaId || '未识别用户')}</div>
+              <div class="muted">项目：\${escapeHtml(item.projectName || item.taskTitle || '-')}</div>
+              <div class="muted">订单号：\${escapeHtml(item.orderNo || '-')} · 提交时间：\${item.createdAt ? new Date(item.createdAt).toLocaleString() : '-'}</div>
             </div>
-            <a class="primary" style="text-decoration:none;" href="/admin/review-detail?userId=\${encodeURIComponent(item.userId)}\${filterSuffix}">查看详情</a>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div class="status \${item.status || 'pending'}">\${statusText(item.status)}</div>
+              <a class="primary" style="text-decoration:none;" href="/admin/review-detail?submissionId=\${encodeURIComponent(item.id)}\${filterSuffix}">查看详情</a>
+            </div>
           </div>
         </article>
       \`).join('');
@@ -804,8 +789,8 @@ function reviewPage() {
   `);
 }
 
-function reviewDetailPage(userId, filters = {}) {
-  const safeUserId = String(userId || "").replace(/[&<>"']/g, char => ({
+function reviewDetailPage(submissionId, filters = {}) {
+  const safeSubmissionId = String(submissionId || "").replace(/[&<>"']/g, char => ({
     "&": "&amp;",
     "<": "&lt;",
     ">": "&gt;",
@@ -824,7 +809,7 @@ function reviewDetailPage(userId, filters = {}) {
   ].filter(Boolean).join(" · ");
   return htmlShell("审核详情", `
     <div class="toolbar">
-      <h2 style="margin:0;font-size:18px;">用户ID：${safeUserId || "未识别用户"}</h2>
+      <h2 style="margin:0;font-size:18px;">订单详情</h2>
       <a class="secondary" style="text-decoration:none;" href="${backUrl}">返回列表</a>
       <button class="secondary" onclick="loadData()">刷新</button>
     </div>
@@ -854,10 +839,10 @@ function reviewDetailPage(userId, filters = {}) {
       });
     }
     async function loadData() {
-      const submissions = applyFilters(await request('/api/admin/submissions?xuanhuaId=${encodeURIComponent(userId || "")}'));
+      const submissions = applyFilters(await request('/api/admin/submissions?submissionId=${encodeURIComponent(submissionId || "")}'));
       const list = document.querySelector('#list');
       if (!submissions.length) {
-        list.innerHTML = '<section class="empty">暂无符合条件的提交资料</section>';
+        list.innerHTML = '<section class="empty">未找到该订单，或该订单不符合当前筛选条件</section>';
         return;
       }
       list.innerHTML = submissions.map(item => \`
@@ -875,6 +860,7 @@ function reviewDetailPage(userId, filters = {}) {
                 <div class="field-line"><div class="field-name">项目名称</div><div class="field-value">\${escapeHtml(item.projectName || item.taskTitle || '')}</div></div>
                 <div class="field-line"><div class="field-name">用户名</div><div class="field-value">\${escapeHtml(item.gameId || '')}</div></div>
                 <div class="field-line"><div class="field-name">订单号</div><div class="field-value">\${escapeHtml(item.orderNo || '')}</div></div>
+                <div class="field-line"><div class="field-name">提交ID</div><div class="field-value">\${escapeHtml(item.id || '')}</div></div>
               </div>
               <div class="asset-title">资料预览</div>
               <div class="asset-grid">
@@ -1003,7 +989,7 @@ async function handle(req, res) {
     return;
   }
   if (req.method === "GET" && url.pathname === "/admin/review-detail") {
-    sendHtml(res, reviewDetailPage(url.searchParams.get("userId") || "", {
+    sendHtml(res, reviewDetailPage(url.searchParams.get("submissionId") || "", {
       status: url.searchParams.get("status") || "",
       startDate: url.searchParams.get("startDate") || "",
       endDate: url.searchParams.get("endDate") || ""
@@ -1036,8 +1022,11 @@ async function handle(req, res) {
       return;
     }
     const xuanhuaId = url.searchParams.get("xuanhuaId");
+    const submissionId = url.searchParams.get("submissionId");
     const db = readDb();
-    const list = xuanhuaId
+    const list = submissionId
+      ? db.submissions.filter(item => item.id === submissionId)
+      : xuanhuaId
       ? db.submissions.filter(item => item.gameId === xuanhuaId || item.xuanhuaId === xuanhuaId)
       : db.submissions;
     sendJson(res, 200, list.map(item => withAssetUrls(req, item)));
