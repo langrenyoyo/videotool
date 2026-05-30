@@ -142,6 +142,51 @@ Page({
   },
 
   pickVideo(sourceType) {
+    const onSuccess = filePath => {
+      if (!filePath) {
+        wx.showToast({
+          title: "未选择视频",
+          icon: "none"
+        });
+        return;
+      }
+      this.setData({
+        videoPath: filePath
+      });
+      uploadAsset({
+        kind: "video",
+        filePath
+      }).then(data => {
+        this.setData({ videoFileId: data.fileId || "" });
+      }).catch(error => {
+        wx.showToast({
+          title: error.message || "视频上传失败",
+          icon: "none"
+        });
+      });
+    };
+    const onFail = error => {
+      const message = error && (error.errMsg || error.message) || "";
+      if (/cancel/i.test(message)) {
+        return;
+      }
+      wx.showToast({
+        title: "无法选择视频，请检查权限或更新微信",
+        icon: "none"
+      });
+    };
+
+    if (wx.chooseVideo) {
+      wx.chooseVideo({
+        sourceType: [sourceType],
+        maxDuration: 300,
+        compressed: true,
+        success: res => onSuccess(res.tempFilePath),
+        fail: onFail
+      });
+      return;
+    }
+
     wx.chooseMedia({
       count: 1,
       mediaType: ["video"],
@@ -149,19 +194,9 @@ Page({
       maxDuration: 300,
       success: res => {
         const file = res.tempFiles && res.tempFiles[0];
-        if (!file) {
-          return;
-        }
-        this.setData({
-          videoPath: file.tempFilePath
-        });
-        uploadAsset({
-          kind: "video",
-          filePath: file.tempFilePath
-        }).then(data => {
-          this.setData({ videoFileId: data.fileId || "" });
-        }).catch(() => {});
-      }
+        onSuccess(file && file.tempFilePath);
+      },
+      fail: onFail
     });
   },
 
