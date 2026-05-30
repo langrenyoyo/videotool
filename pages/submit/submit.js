@@ -188,11 +188,10 @@ Page({
         fallback();
         return;
       }
-      wx.chooseMedia({
+      const options = {
         count: 1,
         mediaType: ["video"],
         sourceType: [sourceType],
-        maxDuration: 300,
         success: res => {
           const file = res.tempFiles && res.tempFiles[0];
           onSuccess(file && file.tempFilePath);
@@ -204,7 +203,11 @@ Page({
           rememberFail(error);
           fallback();
         }
-      });
+      };
+      if (sourceType === "camera") {
+        options.maxDuration = 60;
+      }
+      wx.chooseMedia(options);
     };
 
     const chooseByVideo = fallback => {
@@ -212,9 +215,8 @@ Page({
         fallback();
         return;
       }
-      wx.chooseVideo({
+      const options = {
         sourceType: [sourceType],
-        maxDuration: 300,
         compressed: true,
         success: res => onSuccess(res.tempFilePath),
         fail: error => {
@@ -224,7 +226,11 @@ Page({
           rememberFail(error);
           fallback();
         }
-      });
+      };
+      if (sourceType === "camera") {
+        options.maxDuration = 60;
+      }
+      wx.chooseVideo(options);
     };
 
     if (sourceType === "album") {
