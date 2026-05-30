@@ -142,10 +142,11 @@ Page({
   },
 
   pickVideo(sourceType) {
+    const failMessages = [];
     const onSuccess = filePath => {
       if (!filePath) {
         wx.showToast({
-          title: "未选择视频",
+          title: "未获取到视频",
           icon: "none"
         });
         return;
@@ -165,39 +166,72 @@ Page({
         });
       });
     };
-    const onFail = error => {
+    const isCancel = error => {
       const message = error && (error.errMsg || error.message) || "";
-      if (/cancel/i.test(message)) {
-        return;
-      }
+      return /cancel/i.test(message);
+    };
+    const rememberFail = error => {
+      const message = error && (error.errMsg || error.message) || "未知错误";
+      failMessages.push(message);
+      console.warn("[pickVideo]", sourceType, message);
+    };
+    const showFinalFail = () => {
+      const last = failMessages[failMessages.length - 1] || "";
       wx.showToast({
-        title: "无法选择视频，请检查权限或更新微信",
+        title: last ? `无法选择视频：${last}` : "无法选择视频，请检查相册权限",
         icon: "none"
       });
     };
 
-    if (wx.chooseVideo) {
+    const chooseByMedia = fallback => {
+      if (!wx.chooseMedia) {
+        fallback();
+        return;
+      }
+      wx.chooseMedia({
+        count: 1,
+        mediaType: ["video"],
+        sourceType: [sourceType],
+        maxDuration: 300,
+        success: res => {
+          const file = res.tempFiles && res.tempFiles[0];
+          onSuccess(file && file.tempFilePath);
+        },
+        fail: error => {
+          if (isCancel(error)) {
+            return;
+          }
+          rememberFail(error);
+          fallback();
+        }
+      });
+    };
+
+    const chooseByVideo = fallback => {
+      if (!wx.chooseVideo) {
+        fallback();
+        return;
+      }
       wx.chooseVideo({
         sourceType: [sourceType],
         maxDuration: 300,
         compressed: true,
         success: res => onSuccess(res.tempFilePath),
-        fail: onFail
+        fail: error => {
+          if (isCancel(error)) {
+            return;
+          }
+          rememberFail(error);
+          fallback();
+        }
       });
+    };
+
+    if (sourceType === "album") {
+      chooseByMedia(() => chooseByVideo(showFinalFail));
       return;
     }
-
-    wx.chooseMedia({
-      count: 1,
-      mediaType: ["video"],
-      sourceType: [sourceType],
-      maxDuration: 300,
-      success: res => {
-        const file = res.tempFiles && res.tempFiles[0];
-        onSuccess(file && file.tempFilePath);
-      },
-      fail: onFail
-    });
+    chooseByVideo(() => chooseByMedia(showFinalFail));
   },
 
   uploadAndMockRecognize(kind, filePath) {
