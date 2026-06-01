@@ -313,7 +313,7 @@ function htmlShell(title, body, script = "") {
     .rejected { background: #fff1f0; color: #c23a2b; }
     .grid { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr) 360px; margin-top: 16px; }
     video, img { background: #000; border-radius: 6px; display: block; width: 100%; }
-    video { height: 240px; object-fit: cover; }
+    video { height: auto; max-height: 70vh; object-fit: contain; }
     img { margin-bottom: 10px; object-fit: cover; }
     .asset-grid { display: grid; gap: 12px; }
     .asset-title { color: #526071; font-size: 13px; font-weight: 600; margin: 10px 0 8px; }
