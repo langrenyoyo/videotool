@@ -1,5 +1,5 @@
 const API_BASE = "https://video.heshan1.shop";
-const BUILD_TAG = "api-domain-20260530";
+const BUILD_TAG = "api-domain-20260613";
 
 function errorMessage(error, fallback) {
   if (!error) {
@@ -8,10 +8,17 @@ function errorMessage(error, fallback) {
   return error.message || error.errMsg || fallback;
 }
 
+function makeRequestError(message, detail) {
+  const error = new Error(message || "Request failed");
+  Object.assign(error, detail || {});
+  return error;
+}
+
 function request(options) {
+  const fullUrl = `${API_BASE}${options.url}`;
   return new Promise((resolve, reject) => {
     wx.request({
-      url: `${API_BASE}${options.url}`,
+      url: fullUrl,
       method: options.method || "GET",
       data: options.data || {},
       header: options.header || {},
@@ -19,11 +26,33 @@ function request(options) {
         if (res.statusCode >= 200 && res.statusCode < 300) {
           resolve(res.data);
         } else {
-          reject(new Error((res.data && res.data.message) || "请求失败"));
+          reject(makeRequestError((res.data && res.data.message) || "Request failed", {
+            statusCode: res.statusCode,
+            responseData: res.data,
+            url: fullUrl
+          }));
         }
       },
-      fail: error => reject(new Error(errorMessage(error, "网络请求失败")))
+      fail: error => reject(makeRequestError(errorMessage(error, "Network request failed"), {
+        errMsg: error && error.errMsg || "",
+        url: fullUrl
+      }))
     });
+  });
+}
+
+function reportClientError(input) {
+  return request({
+    url: "/api/client-logs",
+    method: "POST",
+    header: {
+      "Content-Type": "application/json"
+    },
+    data: {
+      apiBase: API_BASE,
+      buildTag: BUILD_TAG,
+      ...input
+    }
   });
 }
 
@@ -55,22 +84,35 @@ function uploadAsset(input) {
         try {
           data = JSON.parse(res.data || "{}");
         } catch (error) {
-          reject(error);
+          reject(makeRequestError(error.message || "Upload response parse failed", {
+            statusCode: res.statusCode,
+            url: uploadUrl
+          }));
           return;
         }
         if (res.statusCode >= 200 && res.statusCode < 300) {
           resolve(data);
         } else {
-          reject(new Error(data.message || "上传失败"));
+          reject(makeRequestError(data.message || "Upload failed", {
+            statusCode: res.statusCode,
+            responseData: data,
+            url: uploadUrl
+          }));
         }
       },
       fail: error => {
-        const message = errorMessage(error, "文件上传失败，请检查网络或后台服务");
+        const message = errorMessage(error, "File upload failed, check network or backend service");
         if (/domain/i.test(message)) {
-          reject(new Error(`上传域名未生效：${API_BASE}`));
+          reject(makeRequestError(`Upload domain not valid: ${API_BASE}`, {
+            errMsg: message,
+            url: uploadUrl
+          }));
           return;
         }
-        reject(new Error(`${message}：${uploadUrl}`));
+        reject(makeRequestError(`${message}: ${uploadUrl}`, {
+          errMsg: error && error.errMsg || "",
+          url: uploadUrl
+        }));
       }
     });
   });
@@ -100,5 +142,6 @@ module.exports = {
   requestTask,
   uploadAsset,
   uploadSubmission,
+  reportClientError,
   requestMySubmissions
 };

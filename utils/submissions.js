@@ -32,7 +32,7 @@ function validateSubmission(input) {
     return "请填写订单号";
   }
   if (!input.gameIdImagePath) {
-    return "请上传萱桦游戏id截图";
+    return "请上传id截图";
   }
   if (!input.orderImagePath) {
     return "请上传订单截图";

@@ -37,12 +37,12 @@ const {
 } = require("../utils/submissions");
 
 const task = getTask("qf4M84e");
-assert.strictEqual(task.title, "萱桦舒缓伴侣后续");
+assert.strictEqual(task.title, "舒缓伴侣后续");
 assert.ok(task.steps.length >= 4);
 
 assert.strictEqual(validateSubmission({ gameId: "", orderNo: "NO1", gameIdImagePath: "/tmp/a.jpg", orderImagePath: "/tmp/b.jpg", videoPath: "/tmp/a.mp4" }), "请填写游戏ID");
 assert.strictEqual(validateSubmission({ gameId: "XH001", orderNo: "", gameIdImagePath: "/tmp/a.jpg", orderImagePath: "/tmp/b.jpg", videoPath: "/tmp/a.mp4" }), "请填写订单号");
-assert.strictEqual(validateSubmission({ gameId: "XH001", orderNo: "NO1", gameIdImagePath: "", orderImagePath: "/tmp/b.jpg", videoPath: "/tmp/a.mp4" }), "请上传萱桦游戏id截图");
+assert.strictEqual(validateSubmission({ gameId: "XH001", orderNo: "NO1", gameIdImagePath: "", orderImagePath: "/tmp/b.jpg", videoPath: "/tmp/a.mp4" }), "请上传id截图");
 assert.strictEqual(validateSubmission({ gameId: "XH001", orderNo: "NO1", gameIdImagePath: "/tmp/a.jpg", orderImagePath: "", videoPath: "/tmp/a.mp4" }), "请上传订单截图");
 assert.strictEqual(validateSubmission({ gameId: "XH001", orderNo: "NO1", gameIdImagePath: "/tmp/a.jpg", orderImagePath: "/tmp/b.jpg", videoPath: "" }), "请上传充值视频");
 assert.strictEqual(validateSubmission({ gameId: "XH001", orderNo: "NO1", gameIdImagePath: "/tmp/a.jpg", orderImagePath: "/tmp/b.jpg", videoPath: "/tmp/a.mp4" }), "");
@@ -88,7 +88,7 @@ assert.strictEqual(approved.status, "approved");
 assert.strictEqual(approved.reviewRemark, "资料清晰");
 assert.strictEqual(listSubmissions()[0].status, "approved");
 
-assert.strictEqual(getProject().name, "萱桦舒缓伴侣后续");
+assert.strictEqual(getProject().name, "舒缓伴侣后续");
 saveProject({ name: "新项目名称" });
 assert.strictEqual(getProject().name, "新项目名称");
 assert.strictEqual(getTask("qf4M84e").title, "新项目名称");

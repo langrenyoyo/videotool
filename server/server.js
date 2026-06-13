@@ -14,26 +14,28 @@ const ADMIN_SESSION_TTL = 7 * 24 * 60 * 60 * 1000;
 const ROOT = path.resolve(__dirname, "..");
 const DATA_DIR = path.join(__dirname, "data");
 const UPLOAD_DIR = path.join(__dirname, "uploads");
+const LOG_DIR = path.join(__dirname, "logs");
+const ERROR_LOG_FILE = path.join(LOG_DIR, "error.log");
 const DB_FILE = path.join(DATA_DIR, "db.json");
 const adminSessions = new Map();
 
 const defaultDb = {
   settings: {
-    projectName: "萱桦舒缓伴侣后续",
+    projectName: "舒缓伴侣后续",
     taskCode: "qf4M84e",
     sectionTitle: "重点内容",
     updatedAt: "2026-04-29 09:43",
     amountText: "6元",
     content:
-      "后续任务要求：从小窗显示萱桦 APP 开始录屏，下载充值软件并打开进行充值，充值金额为 6 元或充足 6 元。充值完成后结束录屏，上传萱桦 ID、充值视频。",
+      "后续任务要求：从小窗显示 APP 开始录屏，下载充值软件并打开进行充值，充值金额为 6 元或充足 6 元。充值完成后结束录屏，上传 ID、充值视频。",
     stepsText:
-      "打开萱桦 APP，并从小窗显示开始录屏\n按任务要求完成充值操作\n充值完成后停止录屏\n在提交页填写萱桦 ID 并上传充值视频",
+      "打开 APP，并从小窗显示开始录屏\n按任务要求完成充值操作\n充值完成后停止录屏\n在提交页填写 ID 并上传充值视频",
     warningsText:
       "请勿上传含支付密码、验证码、身份证号等敏感信息的视频\n仅提交任务要求所需信息，确认无误后再提交",
     requiredMaterialsText:
-      "萱桦 ID\n充值完成后的录屏视频",
-    formDesc: "上传萱桦ID截图，订单截图，充值视频",
-    gameIdImageTitle: "萱桦游戏id截图",
+      "ID\n充值完成后的录屏视频",
+    formDesc: "上传ID截图，订单截图，充值视频",
+    gameIdImageTitle: "id截图",
     gameIdImageTip: "请正面拍摄，要求内容清晰完整，方便AI识别",
     gameIdFieldLabel: "ID",
     orderImageTitle: "订单截图",
@@ -49,9 +51,87 @@ const defaultDb = {
 function ensureStore() {
   fs.mkdirSync(DATA_DIR, { recursive: true });
   fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+  fs.mkdirSync(LOG_DIR, { recursive: true });
   if (!fs.existsSync(DB_FILE)) {
     writeDb(defaultDb);
   }
+}
+
+function safeJson(value) {
+  try {
+    return JSON.stringify(value);
+  } catch (error) {
+    return JSON.stringify({ message: "日志序列化失败", error: error.message });
+  }
+}
+
+function logError(event, detail) {
+  ensureStore();
+  const entry = {
+    time: new Date().toISOString(),
+    event,
+    ...detail
+  };
+  fs.appendFileSync(ERROR_LOG_FILE, `${safeJson(entry)}\n`);
+  console.error(`[${entry.time}] ${event}:`, detail && (detail.message || detail.reason || detail.error || ""));
+}
+
+function readErrorLogs(limit = 200) {
+  ensureStore();
+  if (!fs.existsSync(ERROR_LOG_FILE)) {
+    return [];
+  }
+  return fs.readFileSync(ERROR_LOG_FILE, "utf8")
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .slice(-limit)
+    .map(line => {
+      try {
+        return normalizeLogEntry(JSON.parse(line));
+      } catch (error) {
+        return normalizeLogEntry({
+          time: "",
+          event: "log-parse-failed",
+          message: line
+        });
+      }
+    })
+    .reverse();
+}
+
+function isUnreadableText(value) {
+  const text = String(value || "").trim();
+  return Boolean(text) && /^[?\uFFFD\s]+$/.test(text);
+}
+
+function readableLogText(value, fallback = "") {
+  if (isUnreadableText(value)) {
+    return fallback;
+  }
+  return value;
+}
+
+function normalizeLogEntry(entry) {
+  const next = { ...entry };
+  const eventText = {
+    "submission-client-failed": "小程序提交失败",
+    "submission-validation-failed": "提交资料校验失败",
+    "submission-json-parse-failed": "提交数据格式错误",
+    "submission-save-failed": "提交记录保存失败",
+    "client-log-parse-failed": "客户端日志解析失败",
+    "server-error": "服务器异常",
+    "log-parse-failed": "日志解析失败"
+  };
+  next.eventText = eventText[next.event] || next.event || "未知错误";
+  next.message = readableLogText(next.message, "");
+  next.reason = readableLogText(next.reason, "");
+  if (!next.message && !next.reason && next.event === "submission-client-failed") {
+    next.message = "前端未提供可读错误信息";
+  }
+  if (next.reason === "璧勬枡涓嶅畬鏁?") {
+    next.reason = "资料不完整";
+  }
+  return next;
 }
 
 function readDb() {
@@ -325,7 +405,12 @@ function htmlShell(title, body, script = "") {
     .field-line { background: #f8fafc; border: 1px solid #e7e9ee; border-radius: 6px; padding: 10px 12px; }
     .field-name { color: #6b7280; font-size: 12px; margin-bottom: 4px; }
     .field-value { font-weight: 700; word-break: break-all; }
-    @media (max-width: 780px) { .settings-grid, .grid, .filter-grid, .stats-grid { grid-template-columns: 1fr; } main { padding: 16px; } .filter-actions { display: grid; grid-template-columns: 1fr 1fr; } }
+    .log-item { display: grid; gap: 10px; }
+    .log-head { align-items: center; display: flex; flex-wrap: wrap; gap: 8px 12px; justify-content: space-between; }
+    .log-event { font-weight: 800; }
+    .log-meta { color: #6b7280; font-size: 12px; }
+    .log-detail { background: #f8fafc; border: 1px solid #e7e9ee; border-radius: 6px; overflow: auto; padding: 12px; white-space: pre-wrap; word-break: break-word; }
+    @media (max-width: 780px) { .settings-grid, .grid, .filter-grid, .stats-grid, .nav-card { grid-template-columns: 1fr; } main { padding: 16px; } .filter-actions { display: grid; grid-template-columns: 1fr 1fr; } }
   </style>
 </head>
 <body>
@@ -334,6 +419,7 @@ function htmlShell(title, body, script = "") {
     <nav>
       <a href="/admin/settings">前端页面设置</a>
       <a href="/admin/review">审核页面</a>
+      <a href="/admin/logs">错误日志</a>
       <a href="/admin/logout">退出登录</a>
     </nav>
   </header>
@@ -422,7 +508,103 @@ function adminHomePage() {
           <p class="muted">查看用户提交的游戏ID截图、订单截图、充值视频，并通过或驳回。</p>
         </article>
       </a>
+      <a href="/admin/logs">
+        <article>
+          <h2 style="margin-top:0;">错误日志</h2>
+          <p class="muted">查看提交失败、客户端上报和服务器异常，定位具体错误原因。</p>
+        </article>
+      </a>
     </section>
+  `);
+}
+
+function logsPage() {
+  return htmlShell("错误日志", `
+    <div class="toolbar">
+      <div>
+        <h2 style="margin:0;font-size:18px;">最近错误</h2>
+        <div class="muted">展示最近 200 条后台错误和小程序提交失败上报。</div>
+      </div>
+      <div class="actions" style="margin-top:0;">
+        <button class="secondary" onclick="loadLogs()">刷新</button>
+        <button class="danger" onclick="clearLogs()">清空日志</button>
+      </div>
+    </div>
+    <section id="logList" class="list">
+      <div class="empty">加载中</div>
+    </section>
+  `, `
+    async function request(url, options) {
+      const res = await fetch(url, options);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.message || '请求失败');
+      }
+      return data;
+    }
+    async function loadLogs() {
+      const list = document.querySelector('#logList');
+      list.innerHTML = '<div class="empty">加载中</div>';
+      const logs = await request('/api/admin/logs');
+      if (!logs.length) {
+        list.innerHTML = '<div class="empty">暂无错误日志</div>';
+        return;
+      }
+      list.innerHTML = logs.map(item => {
+        const detail = sanitizeDetail({ ...item });
+        delete detail.time;
+        delete detail.event;
+        delete detail.eventText;
+        return \`
+          <article class="log-item">
+            <div class="log-head">
+              <div>
+                <div class="log-event">\${escapeHtml(item.eventText || item.event || '-')}</div>
+                <div class="log-meta">\${escapeHtml(item.event || '-')}</div>
+                <div class="log-meta">\${escapeHtml(formatTime(item.time))} · requestId: \${escapeHtml(item.requestId || '-')}</div>
+              </div>
+              <span class="status rejected">\${escapeHtml(item.statusCode || 'error')}</span>
+            </div>
+            <div class="muted">\${escapeHtml(item.message || item.reason || item.errMsg || '')}</div>
+            <pre class="log-detail">\${escapeHtml(JSON.stringify(detail, null, 2))}</pre>
+          </article>
+        \`;
+      }).join('');
+    }
+    async function clearLogs() {
+      if (!confirm('确定清空错误日志吗？')) return;
+      await request('/api/admin/logs', { method: 'DELETE' });
+      loadLogs();
+    }
+    function formatTime(value) {
+      if (!value) return '-';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return value;
+      return date.toLocaleString();
+    }
+    function sanitizeDetail(value) {
+      if (Array.isArray(value)) {
+        return value.map(sanitizeDetail);
+      }
+      if (value && typeof value === 'object') {
+        return Object.keys(value).reduce((acc, key) => {
+          acc[key] = sanitizeDetail(value[key]);
+          return acc;
+        }, {});
+      }
+      if (typeof value === 'string' && /^[?\\uFFFD\\s]+$/.test(value.trim())) {
+        return '不可读内容';
+      }
+      return value;
+    }
+    function escapeHtml(value) {
+      return String(value == null ? '' : value).replace(/[&<>"']/g, char => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[char]));
+    }
+    loadLogs().catch(error => {
+      document.querySelector('#logList').innerHTML = '<div class="empty">' + escapeHtml(error.message) + '</div>';
+    });
   `);
 }
 
@@ -472,7 +654,7 @@ function settingsPage() {
       <div class="settings-grid">
         <div>
           <label for="formDesc">任务卡片描述</label>
-          <input id="formDesc" placeholder="上传萱桦ID截图，订单截图，充值视频">
+          <input id="formDesc" placeholder="上传ID截图，订单截图，充值视频">
         </div>
         <div>
           <label for="gameIdImageTitle">游戏ID截图标题</label>
@@ -767,7 +949,7 @@ function reviewPage() {
         <article>
           <div class="record-head">
             <div>
-              <div class="title">用户ID：\${escapeHtml(item.gameId || item.xuanhuaId || '未识别用户')}</div>
+              <div class="title">用户ID：\${escapeHtml(item.gameId || item.xuanhuaId || '未识别ID')}</div>
               <div class="muted">项目：\${escapeHtml(item.projectName || item.taskTitle || '-')}</div>
               <div class="muted">订单号：\${escapeHtml(item.orderNo || '-')} · 提交时间：\${item.createdAt ? new Date(item.createdAt).toLocaleString() : '-'}</div>
             </div>
@@ -858,13 +1040,13 @@ function reviewDetailPage(submissionId, filters = {}) {
             <div>
               <div class="field-grid">
                 <div class="field-line"><div class="field-name">项目名称</div><div class="field-value">\${escapeHtml(item.projectName || item.taskTitle || '')}</div></div>
-                <div class="field-line"><div class="field-name">用户名</div><div class="field-value">\${escapeHtml(item.gameId || '')}</div></div>
+                <div class="field-line"><div class="field-name">ID</div><div class="field-value">\${escapeHtml(item.gameId || '')}</div></div>
                 <div class="field-line"><div class="field-name">订单号</div><div class="field-value">\${escapeHtml(item.orderNo || '')}</div></div>
                 <div class="field-line"><div class="field-name">提交ID</div><div class="field-value">\${escapeHtml(item.id || '')}</div></div>
               </div>
               <div class="asset-title">资料预览</div>
               <div class="asset-grid">
-                \${item.gameIdImageUrl ? '<img src="' + item.gameIdImageUrl + '" alt="用户名截图">' : ''}
+                \${item.gameIdImageUrl ? '<img src="' + item.gameIdImageUrl + '" alt="ID截图">' : ''}
                 \${item.orderImageUrl ? '<img src="' + item.orderImageUrl + '" alt="订单截图">' : ''}
                 \${item.videoUrl ? '<video src="' + item.videoUrl + '" controls></video>' : ''}
               </div>
@@ -988,6 +1170,10 @@ async function handle(req, res) {
     sendHtml(res, reviewPage());
     return;
   }
+  if (req.method === "GET" && url.pathname === "/admin/logs") {
+    sendHtml(res, logsPage());
+    return;
+  }
   if (req.method === "GET" && url.pathname === "/admin/review-detail") {
     sendHtml(res, reviewDetailPage(url.searchParams.get("submissionId") || "", {
       status: url.searchParams.get("status") || "",
@@ -1030,6 +1216,24 @@ async function handle(req, res) {
       ? db.submissions.filter(item => item.gameId === xuanhuaId || item.xuanhuaId === xuanhuaId)
       : db.submissions;
     sendJson(res, 200, list.map(item => withAssetUrls(req, item)));
+    return;
+  }
+  if (req.method === "GET" && url.pathname === "/api/admin/logs") {
+    if (!isAdminAuthed(req)) {
+      sendJson(res, 401, { message: "请先登录" });
+      return;
+    }
+    sendJson(res, 200, readErrorLogs());
+    return;
+  }
+  if (req.method === "DELETE" && url.pathname === "/api/admin/logs") {
+    if (!isAdminAuthed(req)) {
+      sendJson(res, 401, { message: "请先登录" });
+      return;
+    }
+    ensureStore();
+    fs.writeFileSync(ERROR_LOG_FILE, "");
+    sendJson(res, 200, { ok: true });
     return;
   }
   const adminReviewMatch = /^\/api\/admin\/submissions\/([^/]+)\/review$/.exec(url.pathname);
@@ -1138,6 +1342,32 @@ async function handle(req, res) {
     sendJson(res, 200, db.settings);
     return;
   }
+  if (req.method === "POST" && url.pathname === "/api/client-logs") {
+    let body = {};
+    try {
+      body = JSON.parse((await readBody(req)).toString("utf8") || "{}");
+    } catch (error) {
+      body = {
+        event: "client-log-parse-failed",
+        message: error.message || "客户端日志 JSON 解析失败"
+      };
+    }
+    logError(body.event || "client-error", {
+      message: body.message || "",
+      apiBase: body.apiBase || "",
+      buildTag: body.buildTag || "",
+      page: body.page || "",
+      action: body.action || "",
+      statusCode: body.statusCode || "",
+      url: body.url || "",
+      errMsg: body.errMsg || "",
+      requestId: body.requestId || "",
+      context: body.context || {},
+      userAgent: req.headers["user-agent"] || ""
+    });
+    sendJson(res, 201, { ok: true });
+    return;
+  }
   if (req.method === "GET" && url.pathname === "/api/submissions") {
     const xuanhuaId = url.searchParams.get("xuanhuaId");
     const db = readDb();
@@ -1148,9 +1378,37 @@ async function handle(req, res) {
     return;
   }
   if (req.method === "POST" && url.pathname === "/api/submissions") {
-    const body = JSON.parse((await readBody(req)).toString("utf8") || "{}");
-    if (!body.gameId || !body.orderNo || !body.gameIdImageFileId || !body.orderImageFileId || !body.videoFileId) {
-      sendJson(res, 400, { message: "资料不完整" });
+    let body = {};
+    const requestId = `submit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    try {
+      body = JSON.parse((await readBody(req)).toString("utf8") || "{}");
+    } catch (error) {
+      logError("submission-json-parse-failed", {
+        requestId,
+        message: error.message || "提交 JSON 解析失败",
+        url: req.url
+      });
+      sendJson(res, 400, { message: "提交数据格式错误", requestId });
+      return;
+    }
+    const missingFields = [
+      ["gameId", body.gameId],
+      ["orderNo", body.orderNo],
+      ["gameIdImageFileId", body.gameIdImageFileId],
+      ["orderImageFileId", body.orderImageFileId],
+      ["videoFileId", body.videoFileId]
+    ].filter(item => !item[1]).map(item => item[0]);
+    if (missingFields.length) {
+      logError("submission-validation-failed", {
+        requestId,
+        reason: "资料不完整",
+        missingFields,
+        gameId: String(body.gameId || "").trim(),
+        orderNo: String(body.orderNo || "").trim(),
+        projectId: String(body.projectId || "").trim(),
+        projectName: String(body.projectName || body.taskTitle || "").trim()
+      });
+      sendJson(res, 400, { message: `资料不完整：缺少 ${missingFields.join(", ")}`, requestId, missingFields });
       return;
     }
     const id = `sub_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -1171,9 +1429,20 @@ async function handle(req, res) {
       reviewRemark: "",
       createdAt: Date.now()
     };
-    db.submissions.unshift(submission);
-    writeDb(db);
-    sendJson(res, 201, withAssetUrls(req, submission));
+    try {
+      db.submissions.unshift(submission);
+      writeDb(db);
+      sendJson(res, 201, withAssetUrls(req, submission));
+    } catch (error) {
+      logError("submission-save-failed", {
+        requestId,
+        message: error.message || "提交记录保存失败",
+        submissionId: id,
+        gameId: submission.gameId,
+        orderNo: submission.orderNo
+      });
+      sendJson(res, 500, { message: "提交记录保存失败", requestId });
+    }
     return;
   }
   const reviewMatch = /^\/api\/submissions\/([^/]+)\/review$/.exec(url.pathname);
@@ -1203,8 +1472,15 @@ if (require.main === module) {
   ensureStore();
   http.createServer((req, res) => {
     handle(req, res).catch(error => {
-      console.error(error);
-      sendJson(res, 500, { message: error.message || "服务器错误" });
+      const requestId = `server_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      logError("server-error", {
+        requestId,
+        method: req.method,
+        url: req.url,
+        message: error.message || "服务器错误",
+        stack: error.stack || ""
+      });
+      sendJson(res, 500, { message: error.message || "服务器错误", requestId });
     });
   }).listen(PORT, () => {
     console.log(`Admin server: http://127.0.0.1:${PORT}/admin`);

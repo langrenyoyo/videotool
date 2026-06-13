@@ -1,7 +1,7 @@
 const PROJECT_KEY = "project_settings";
 
 const defaultProject = {
-  name: "萱桦舒缓伴侣后续",
+  name: "舒缓伴侣后续",
   code: "qf4M84e"
 };
 

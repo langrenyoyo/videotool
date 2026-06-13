@@ -3,29 +3,29 @@ const { getProject } = require("./project");
 const tasks = {
   qf4M84e: {
     code: "qf4M84e",
-    title: "萱桦舒缓伴侣后续",
+    title: "舒缓伴侣后续",
     sectionTitle: "重点内容",
     updatedAt: "2026-04-29 09:43",
     amountText: "6元",
     content:
-      "后续任务要求：从小窗显示萱桦 APP 开始录屏，下载充值软件并打开进行充值，充值金额为 6 元或充足 6 元。充值完成后结束录屏，上传萱桦 ID、充值视频。",
+      "后续任务要求：从小窗显示 APP 开始录屏，下载充值软件并打开进行充值，充值金额为 6 元或充足 6 元。充值完成后结束录屏，上传 ID、充值视频。",
     steps: [
-      "打开萱桦 APP，并从小窗显示开始录屏",
+      "打开 APP，并从小窗显示开始录屏",
       "按任务要求完成充值操作",
       "充值完成后停止录屏",
-      "在提交页填写萱桦 ID 并上传充值视频"
+      "在提交页填写 ID 并上传充值视频"
     ],
     warnings: [
       "请勿上传含支付密码、验证码、身份证号等敏感信息的视频",
       "仅提交任务要求所需信息，确认无误后再提交"
     ],
     requiredMaterials: [
-      "萱桦 ID",
+      "ID",
       "充值完成后的录屏视频"
     ],
     form: {
-      desc: "上传萱桦ID截图，订单截图，充值视频",
-      gameIdImageTitle: "萱桦游戏id截图",
+      desc: "上传ID截图，订单截图，充值视频",
+      gameIdImageTitle: "id截图",
       gameIdImageTip: "请正面拍摄，要求内容清晰完整，方便AI识别",
       gameIdFieldLabel: "ID",
       orderImageTitle: "订单截图",

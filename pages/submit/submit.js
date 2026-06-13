@@ -1,5 +1,5 @@
 const { getTask } = require("../../utils/tasks");
-const { requestTask, uploadAsset, uploadSubmission } = require("../../utils/api");
+const { requestTask, uploadAsset, uploadSubmission, reportClientError } = require("../../utils/api");
 const { validateSubmission } = require("../../utils/submissions");
 
 Page({
@@ -272,7 +272,7 @@ Page({
         wx.showToast({
           title: kind === "order"
             ? (orderNo ? "已识别订单号" : "未识别到订单号")
-            : (gameId ? "已识别用户名" : "未识别到用户名"),
+            : (gameId ? "已识别ID" : "未识别到ID"),
           icon: "none"
         });
       })
@@ -324,9 +324,32 @@ Page({
           });
         }, 600);
       })
-      .catch(() => {
+      .catch(error => {
+        reportClientError({
+          event: "submission-client-failed",
+          page: "pages/submit/submit",
+          action: "submit",
+          message: error.message || "提交失败",
+          statusCode: error.statusCode || "",
+          url: error.url || "",
+          errMsg: error.errMsg || "",
+          requestId: error.responseData && error.responseData.requestId || "",
+          context: {
+            taskCode: input.taskCode,
+            projectId: input.projectId,
+            projectName: input.projectName,
+            gameId: input.gameId,
+            orderNo: input.orderNo,
+            hasGameIdImagePath: Boolean(input.gameIdImagePath),
+            hasOrderImagePath: Boolean(input.orderImagePath),
+            hasVideoPath: Boolean(input.videoPath),
+            hasGameIdImageFileId: Boolean(input.gameIdImageFileId),
+            hasOrderImageFileId: Boolean(input.orderImageFileId),
+            hasVideoFileId: Boolean(input.videoFileId)
+          }
+        }).catch(() => {});
         wx.showToast({
-          title: "提交失败，请先启动后台服务",
+          title: error.message || "提交失败，请检查网络或后台服务",
           icon: "none"
         });
       })

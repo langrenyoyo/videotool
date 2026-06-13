@@ -40,7 +40,7 @@
         <view class="ai-label">{{task.form.gameIdFieldLabel}}</view>
         <input class="ai-input" value="{{gameId}}" placeholder="自动识别或手动填写" bindinput="onGameIdInput" />
       </view>
-      <view wx:if="{{recognizingGameId}}" class="ai-status">正在识别用户名...</view>
+      <view wx:if="{{recognizingGameId}}" class="ai-status">正在识别ID...</view>
     </view>
   </view>
 
@@ -81,7 +81,7 @@
       </view>
     </view>
     <view wx:if="{{gameIdImagePath || orderImagePath || videoPath}}" class="file-summary">
-      <view wx:if="{{gameIdImagePath}}" class="file-line">已上传用户名截图</view>
+      <view wx:if="{{gameIdImagePath}}" class="file-line">已上传ID截图</view>
       <view wx:if="{{orderImagePath}}" class="file-line">已上传订单截图</view>
       <view wx:if="{{videoPath}}" class="file-line">已上传充值视频</view>
     </view>
