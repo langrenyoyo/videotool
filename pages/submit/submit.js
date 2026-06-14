@@ -20,6 +20,8 @@ Page({
     videoFileId: "",
     recognizingGameId: false,
     recognizingOrder: false,
+    videoUploading: false,
+    videoUploadError: "",
     submitting: false
   },
 
@@ -152,14 +154,26 @@ Page({
         return;
       }
       this.setData({
-        videoPath: filePath
+        videoPath: filePath,
+        videoFileId: "",
+        videoUploading: true,
+        videoUploadError: ""
       });
       uploadAsset({
         kind: "video",
         filePath
       }).then(data => {
-        this.setData({ videoFileId: data.fileId || "" });
+        this.setData({
+          videoFileId: data.fileId || "",
+          videoUploading: false,
+          videoUploadError: data.fileId ? "" : "视频上传未返回文件ID"
+        });
       }).catch(error => {
+        this.setData({
+          videoFileId: "",
+          videoUploading: false,
+          videoUploadError: error.message || "视频上传失败"
+        });
         wx.showToast({
           title: error.message || "视频上传失败",
           icon: "none"
@@ -288,6 +302,20 @@ Page({
   },
 
   submit() {
+    if (this.data.videoUploading) {
+      wx.showToast({
+        title: "视频正在上传，请稍后提交",
+        icon: "none"
+      });
+      return;
+    }
+    if (this.data.videoPath && !this.data.videoFileId) {
+      wx.showToast({
+        title: this.data.videoUploadError || "视频未上传成功，请重新选择视频",
+        icon: "none"
+      });
+      return;
+    }
     const input = {
       taskCode: this.data.task.code,
       projectId: this.data.selectedProjectId,

@@ -119,6 +119,7 @@ function normalizeLogEntry(entry) {
     "submission-json-parse-failed": "提交数据格式错误",
     "submission-save-failed": "提交记录保存失败",
     "client-log-parse-failed": "客户端日志解析失败",
+    "client-abort": "客户端上传中断",
     "server-error": "服务器异常",
     "log-parse-failed": "日志解析失败"
   };
@@ -130,6 +131,16 @@ function normalizeLogEntry(entry) {
   }
   if (next.reason === "璧勬枡涓嶅畬鏁?") {
     next.reason = "资料不完整";
+  }
+  if (Array.isArray(next.missingFields) && next.missingFields.length) {
+    const fieldText = {
+      gameId: "缺少用户 ID",
+      orderNo: "缺少订单号",
+      gameIdImageFileId: "缺少 ID 截图文件 ID",
+      orderImageFileId: "缺少订单截图文件 ID",
+      videoFileId: "缺少视频文件 ID，视频未上传成功或仍在上传"
+    };
+    next.missingFieldText = next.missingFields.map(field => fieldText[field] || field);
   }
   return next;
 }
@@ -220,7 +231,9 @@ function readBody(req) {
     const chunks = [];
     req.on("data", chunk => chunks.push(chunk));
     req.on("end", () => resolve(Buffer.concat(chunks)));
-    req.on("error", reject);
+    req.on("error", error => {
+      reject(error);
+    });
   });
 }
 
@@ -565,7 +578,7 @@ function logsPage() {
               </div>
               <span class="status rejected">\${escapeHtml(item.statusCode || 'error')}</span>
             </div>
-            <div class="muted">\${escapeHtml(item.message || item.reason || item.errMsg || '')}</div>
+            <div class="muted">\${escapeHtml(summaryText(item))}</div>
             <pre class="log-detail">\${escapeHtml(JSON.stringify(detail, null, 2))}</pre>
           </article>
         \`;
@@ -596,6 +609,12 @@ function logsPage() {
         return '不可读内容';
       }
       return value;
+    }
+    function summaryText(item) {
+      if (Array.isArray(item.missingFieldText) && item.missingFieldText.length) {
+        return item.missingFieldText.join('；');
+      }
+      return item.message || item.reason || item.errMsg || '';
     }
     function escapeHtml(value) {
       return String(value == null ? '' : value).replace(/[&<>"']/g, char => ({
@@ -1473,13 +1492,25 @@ if (require.main === module) {
   http.createServer((req, res) => {
     handle(req, res).catch(error => {
       const requestId = `server_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-      logError("server-error", {
+      const isClientAbort = error && (
+        error.code === "ECONNRESET" ||
+        error.code === "ECONNABORTED" ||
+        error.message === "aborted"
+      );
+      const event = isClientAbort ? "client-abort" : "server-error";
+      logError(event, {
         requestId,
         method: req.method,
         url: req.url,
         message: error.message || "服务器错误",
         stack: error.stack || ""
       });
+      if (isClientAbort) {
+        if (!res.writableEnded) {
+          res.destroy();
+        }
+        return;
+      }
       sendJson(res, 500, { message: error.message || "服务器错误", requestId });
     });
   }).listen(PORT, () => {
