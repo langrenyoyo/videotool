@@ -171,10 +171,11 @@ async function recognizeImage(imageUrl, kind) {
   };
 }
 
-function loadEnvFile(file = path.resolve(__dirname, "..", ".env")) {
+function loadEnvFile(file = path.resolve(__dirname, "..", ".env"), options = {}) {
   if (!fs.existsSync(file)) {
     return;
   }
+  const override = options.override !== false;
   const lines = fs.readFileSync(file, "utf8").split(/\r?\n/);
   for (const line of lines) {
     const trimmed = line.trim();
@@ -184,7 +185,7 @@ function loadEnvFile(file = path.resolve(__dirname, "..", ".env")) {
     const index = trimmed.indexOf("=");
     const key = trimmed.slice(0, index).trim();
     const value = trimmed.slice(index + 1).trim();
-    if (!process.env[key]) {
+    if (override || !process.env[key]) {
       process.env[key] = value;
     }
   }
