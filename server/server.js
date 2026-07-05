@@ -453,6 +453,7 @@ function htmlShell(title, body, script = "") {
     .asset-grid { display: grid; gap: 12px; }
     .asset-item { display: grid; gap: 6px; }
     .asset-label { color: #334155; font-size: 13px; font-weight: 700; }
+    .asset-missing { background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 6px; color: #64748b; font-size: 13px; padding: 18px; text-align: center; }
     .asset-title { color: #526071; font-size: 13px; font-weight: 600; margin: 10px 0 8px; }
     .actions { display: flex; gap: 10px; margin-top: 12px; }
     .empty { color: #6b7280; padding: 32px; text-align: center; }
@@ -1111,8 +1112,8 @@ function reviewDetailPage(submissionId, filters = {}) {
               <div class="asset-grid">
                 \${item.gameIdImageUrl ? '<div class="asset-item"><div class="asset-label">ID截图</div><img src="' + escapeHtml(item.gameIdImageUrl) + '" alt="ID截图"></div>' : ''}
                 \${item.orderImageUrl ? '<div class="asset-item"><div class="asset-label">订单截图</div><img src="' + escapeHtml(item.orderImageUrl) + '" alt="订单截图"></div>' : ''}
-                \${item.videoUrl ? '<div class="asset-item"><div class="asset-label">充值视频</div><video src="' + escapeHtml(item.videoUrl) + '" controls></video></div>' : ''}
-                \${item.downloadVideoUrl ? '<div class="asset-item"><div class="asset-label">任意应用下载录屏</div><video src="' + escapeHtml(item.downloadVideoUrl) + '" controls></video></div>' : ''}
+                \${assetVideo('充值视频', item.videoUrl)}
+                \${assetVideo('任意应用下载录屏', item.downloadVideoUrl)}
               </div>
               <label>审核备注</label>
               <textarea id="remark-\${item.id}" rows="5" placeholder="可填写通过或驳回原因">\${escapeHtml(item.reviewRemark || '')}</textarea>
@@ -1139,15 +1140,33 @@ function reviewDetailPage(submissionId, filters = {}) {
         '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
       }[char]));
     }
+    function assetVideo(label, url) {
+      const safeLabel = escapeHtml(label);
+      if (!url) {
+        return '<div class="asset-item"><div class="asset-label">' + safeLabel + '</div><div class="asset-missing">未上传或旧记录无此视频</div></div>';
+      }
+      return '<div class="asset-item"><div class="asset-label">' + safeLabel + '</div><video src="' + escapeHtml(url) + '" controls></video></div>';
+    }
     loadData().catch(error => alert(error.message));
   `);
 }
 
 function withVideoUrl(req, item) {
+  const assetUrl = file => {
+    if (!file) {
+      return "";
+    }
+    if (/^https?:\/\//i.test(file)) {
+      return file;
+    }
+    return `${publicBaseUrl(req)}/uploads/${encodeURIComponent(file)}`;
+  };
+  const videoFile = item.videoFile || item.videoFileId || item.videoUrl;
+  const downloadVideoFile = item.downloadVideoFile || item.downloadVideoFileId || item.downloadVideo || item.downloadVideoUrl || item.secondVideoFile || item.secondVideoFileId || item.videoFile2 || item.videoFileId2;
   return {
     ...item,
-    videoUrl: item.videoFile ? `${publicBaseUrl(req)}/uploads/${encodeURIComponent(item.videoFile)}` : "",
-    downloadVideoUrl: item.downloadVideoFile ? `${publicBaseUrl(req)}/uploads/${encodeURIComponent(item.downloadVideoFile)}` : ""
+    videoUrl: assetUrl(videoFile),
+    downloadVideoUrl: assetUrl(downloadVideoFile)
   };
 }
 
@@ -1170,12 +1189,14 @@ function withAssetUrls(req, item) {
     }
     return `${publicBaseUrl(req)}/uploads/${encodeURIComponent(file)}`;
   };
+  const videoFile = item.videoFile || item.videoFileId || item.videoUrl;
+  const downloadVideoFile = item.downloadVideoFile || item.downloadVideoFileId || item.downloadVideo || item.downloadVideoUrl || item.secondVideoFile || item.secondVideoFileId || item.videoFile2 || item.videoFileId2;
   return {
     ...item,
     gameIdImageUrl: assetUrl(item.gameIdImageFile),
     orderImageUrl: assetUrl(item.orderImageFile),
-    videoUrl: assetUrl(item.videoFile),
-    downloadVideoUrl: assetUrl(item.downloadVideoFile)
+    videoUrl: assetUrl(videoFile),
+    downloadVideoUrl: assetUrl(downloadVideoFile)
   };
 }
 
@@ -1501,7 +1522,9 @@ async function handle(req, res) {
       gameIdImageFile: body.gameIdImageFileId,
       orderImageFile: body.orderImageFileId,
       videoFile: body.videoFileId,
+      videoFileId: body.videoFileId,
       downloadVideoFile: body.downloadVideoFileId,
+      downloadVideoFileId: body.downloadVideoFileId,
       status: "pending",
       reviewRemark: "",
       createdAt: Date.now()
