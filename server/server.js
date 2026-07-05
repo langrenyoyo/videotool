@@ -1487,23 +1487,41 @@ async function handle(req, res) {
       sendJson(res, 400, { message: "提交数据格式错误", requestId });
       return;
     }
+    const videoFileId = body.videoFileId || body.videoFile || body.videoUrl;
+    const downloadVideoFileId = body.downloadVideoFileId
+      || body.downloadVideoFile
+      || body.downloadVideo
+      || body.downloadVideoUrl
+      || body.secondVideoFile
+      || body.secondVideoFileId
+      || body.videoFile2
+      || body.videoFileId2;
     const missingFields = [
       ["gameId", body.gameId],
       ["orderNo", body.orderNo],
       ["gameIdImageFileId", body.gameIdImageFileId],
       ["orderImageFileId", body.orderImageFileId],
-      ["videoFileId", body.videoFileId],
-      ["downloadVideoFileId", body.downloadVideoFileId]
+      ["videoFileId", videoFileId],
+      ["downloadVideoFileId", downloadVideoFileId]
     ].filter(item => !item[1]).map(item => item[0]);
     if (missingFields.length) {
       logError("submission-validation-failed", {
         requestId,
         reason: "资料不完整",
         missingFields,
+        clientBuildTag: String(body.clientBuildTag || "").trim(),
         gameId: String(body.gameId || "").trim(),
         orderNo: String(body.orderNo || "").trim(),
         projectId: String(body.projectId || "").trim(),
-        projectName: String(body.projectName || body.taskTitle || "").trim()
+        projectName: String(body.projectName || body.taskTitle || "").trim(),
+        videoFields: {
+          hasVideoFileId: Boolean(body.videoFileId),
+          hasDownloadVideoFileId: Boolean(body.downloadVideoFileId),
+          hasDownloadVideoFile: Boolean(body.downloadVideoFile),
+          hasDownloadVideoUrl: Boolean(body.downloadVideoUrl),
+          hasSecondVideoFileId: Boolean(body.secondVideoFileId),
+          hasVideoFileId2: Boolean(body.videoFileId2)
+        }
       });
       sendJson(res, 400, { message: `资料不完整：缺少 ${missingFields.join(", ")}`, requestId, missingFields });
       return;
@@ -1521,10 +1539,11 @@ async function handle(req, res) {
       orderNo: String(body.orderNo || "").trim(),
       gameIdImageFile: body.gameIdImageFileId,
       orderImageFile: body.orderImageFileId,
-      videoFile: body.videoFileId,
-      videoFileId: body.videoFileId,
-      downloadVideoFile: body.downloadVideoFileId,
-      downloadVideoFileId: body.downloadVideoFileId,
+      videoFile: videoFileId,
+      videoFileId,
+      downloadVideoFile: downloadVideoFileId,
+      downloadVideoFileId,
+      clientBuildTag: String(body.clientBuildTag || "").trim(),
       status: "pending",
       reviewRemark: "",
       createdAt: Date.now()

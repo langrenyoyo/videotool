@@ -1,5 +1,5 @@
 const { getTask } = require("../../utils/tasks");
-const { requestTask, uploadAsset, uploadSubmission, reportClientError } = require("../../utils/api");
+const { BUILD_TAG, requestTask, uploadAsset, uploadSubmission, reportClientError } = require("../../utils/api");
 const { validateSubmission } = require("../../utils/submissions");
 
 Page({
@@ -438,6 +438,7 @@ Page({
       projectId: this.data.selectedProjectId,
       projectName: this.data.selectedProjectName,
       taskTitle: this.data.selectedProjectName || this.data.task.title,
+      clientBuildTag: BUILD_TAG,
       gameId: this.data.gameId,
       orderNo: this.data.orderNo,
       gameIdImagePath: this.data.gameIdImagePath,
@@ -451,6 +452,27 @@ Page({
     };
     const error = validateSubmission(input);
     if (error) {
+      reportClientError({
+        event: "submission-client-validation-failed",
+        page: "pages/submit/submit",
+        action: "submit",
+        message: error,
+        context: {
+          taskCode: input.taskCode,
+          projectId: input.projectId,
+          projectName: input.projectName,
+          gameId: input.gameId,
+          orderNo: input.orderNo,
+          hasGameIdImagePath: Boolean(input.gameIdImagePath),
+          hasOrderImagePath: Boolean(input.orderImagePath),
+          hasVideoPath: Boolean(input.videoPath),
+          hasDownloadVideoPath: Boolean(input.downloadVideoPath),
+          hasGameIdImageFileId: Boolean(input.gameIdImageFileId),
+          hasOrderImageFileId: Boolean(input.orderImageFileId),
+          hasVideoFileId: Boolean(input.videoFileId),
+          hasDownloadVideoFileId: Boolean(input.downloadVideoFileId)
+        }
+      }).catch(() => {});
       wx.showToast({
         title: error,
         icon: "none"

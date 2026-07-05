@@ -1,5 +1,5 @@
 const API_BASE = "https://video.heshan1.shop";
-const BUILD_TAG = "api-domain-20260613";
+const BUILD_TAG = "dual-video-20260706";
 
 function errorMessage(error, fallback) {
   if (!error) {
