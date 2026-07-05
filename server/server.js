@@ -140,8 +140,7 @@ function normalizeLogEntry(entry) {
       orderNo: "缺少订单号",
       gameIdImageFileId: "缺少 ID 截图文件 ID",
       orderImageFileId: "缺少订单截图文件 ID",
-      videoFileId: "缺少充值视频文件 ID，视频未上传成功或仍在上传",
-      downloadVideoFileId: "缺少任意应用下载录屏文件 ID，视频未上传成功或仍在上传"
+      videoFileId: "缺少充值视频文件 ID，视频未上传成功或仍在上传"
     };
     next.missingFieldText = next.missingFields.map(field => fieldText[field] || field);
   }
@@ -453,7 +452,6 @@ function htmlShell(title, body, script = "") {
     .asset-grid { display: grid; gap: 12px; }
     .asset-item { display: grid; gap: 6px; }
     .asset-label { color: #334155; font-size: 13px; font-weight: 700; }
-    .asset-missing { background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 6px; color: #64748b; font-size: 13px; padding: 18px; text-align: center; }
     .asset-title { color: #526071; font-size: 13px; font-weight: 600; margin: 10px 0 8px; }
     .actions { display: flex; gap: 10px; margin-top: 12px; }
     .empty { color: #6b7280; padding: 32px; text-align: center; }
@@ -1112,8 +1110,7 @@ function reviewDetailPage(submissionId, filters = {}) {
               <div class="asset-grid">
                 \${item.gameIdImageUrl ? '<div class="asset-item"><div class="asset-label">ID截图</div><img src="' + escapeHtml(item.gameIdImageUrl) + '" alt="ID截图"></div>' : ''}
                 \${item.orderImageUrl ? '<div class="asset-item"><div class="asset-label">订单截图</div><img src="' + escapeHtml(item.orderImageUrl) + '" alt="订单截图"></div>' : ''}
-                \${assetVideo('充值视频', item.videoUrl)}
-                \${assetVideo('任意应用下载录屏', item.downloadVideoUrl)}
+                \${item.videoUrl ? '<div class="asset-item"><div class="asset-label">充值视频</div><video src="' + escapeHtml(item.videoUrl) + '" controls></video></div>' : ''}
               </div>
               <label>审核备注</label>
               <textarea id="remark-\${item.id}" rows="5" placeholder="可填写通过或驳回原因">\${escapeHtml(item.reviewRemark || '')}</textarea>
@@ -1140,13 +1137,6 @@ function reviewDetailPage(submissionId, filters = {}) {
         '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
       }[char]));
     }
-    function assetVideo(label, url) {
-      const safeLabel = escapeHtml(label);
-      if (!url) {
-        return '<div class="asset-item"><div class="asset-label">' + safeLabel + '</div><div class="asset-missing">未上传或旧记录无此视频</div></div>';
-      }
-      return '<div class="asset-item"><div class="asset-label">' + safeLabel + '</div><video src="' + escapeHtml(url) + '" controls></video></div>';
-    }
     loadData().catch(error => alert(error.message));
   `);
 }
@@ -1162,11 +1152,9 @@ function withVideoUrl(req, item) {
     return `${publicBaseUrl(req)}/uploads/${encodeURIComponent(file)}`;
   };
   const videoFile = item.videoFile || item.videoFileId || item.videoUrl;
-  const downloadVideoFile = item.downloadVideoFile || item.downloadVideoFileId || item.downloadVideo || item.downloadVideoUrl || item.secondVideoFile || item.secondVideoFileId || item.videoFile2 || item.videoFileId2;
   return {
     ...item,
-    videoUrl: assetUrl(videoFile),
-    downloadVideoUrl: assetUrl(downloadVideoFile)
+    videoUrl: assetUrl(videoFile)
   };
 }
 
@@ -1190,13 +1178,11 @@ function withAssetUrls(req, item) {
     return `${publicBaseUrl(req)}/uploads/${encodeURIComponent(file)}`;
   };
   const videoFile = item.videoFile || item.videoFileId || item.videoUrl;
-  const downloadVideoFile = item.downloadVideoFile || item.downloadVideoFileId || item.downloadVideo || item.downloadVideoUrl || item.secondVideoFile || item.secondVideoFileId || item.videoFile2 || item.videoFileId2;
   return {
     ...item,
     gameIdImageUrl: assetUrl(item.gameIdImageFile),
     orderImageUrl: assetUrl(item.orderImageFile),
-    videoUrl: assetUrl(videoFile),
-    downloadVideoUrl: assetUrl(downloadVideoFile)
+    videoUrl: assetUrl(videoFile)
   };
 }
 
@@ -1488,21 +1474,12 @@ async function handle(req, res) {
       return;
     }
     const videoFileId = body.videoFileId || body.videoFile || body.videoUrl;
-    const downloadVideoFileId = body.downloadVideoFileId
-      || body.downloadVideoFile
-      || body.downloadVideo
-      || body.downloadVideoUrl
-      || body.secondVideoFile
-      || body.secondVideoFileId
-      || body.videoFile2
-      || body.videoFileId2;
     const missingFields = [
       ["gameId", body.gameId],
       ["orderNo", body.orderNo],
       ["gameIdImageFileId", body.gameIdImageFileId],
       ["orderImageFileId", body.orderImageFileId],
-      ["videoFileId", videoFileId],
-      ["downloadVideoFileId", downloadVideoFileId]
+      ["videoFileId", videoFileId]
     ].filter(item => !item[1]).map(item => item[0]);
     if (missingFields.length) {
       logError("submission-validation-failed", {
@@ -1515,12 +1492,7 @@ async function handle(req, res) {
         projectId: String(body.projectId || "").trim(),
         projectName: String(body.projectName || body.taskTitle || "").trim(),
         videoFields: {
-          hasVideoFileId: Boolean(body.videoFileId),
-          hasDownloadVideoFileId: Boolean(body.downloadVideoFileId),
-          hasDownloadVideoFile: Boolean(body.downloadVideoFile),
-          hasDownloadVideoUrl: Boolean(body.downloadVideoUrl),
-          hasSecondVideoFileId: Boolean(body.secondVideoFileId),
-          hasVideoFileId2: Boolean(body.videoFileId2)
+          hasVideoFileId: Boolean(body.videoFileId)
         }
       });
       sendJson(res, 400, { message: `资料不完整：缺少 ${missingFields.join(", ")}`, requestId, missingFields });
@@ -1541,8 +1513,6 @@ async function handle(req, res) {
       orderImageFile: body.orderImageFileId,
       videoFile: videoFileId,
       videoFileId,
-      downloadVideoFile: downloadVideoFileId,
-      downloadVideoFileId,
       clientBuildTag: String(body.clientBuildTag || "").trim(),
       status: "pending",
       reviewRemark: "",
