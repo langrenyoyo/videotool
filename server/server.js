@@ -11,6 +11,8 @@ const PORT = Number(process.env.PORT || 3000);
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "admin";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "bb654321";
 const ADMIN_SESSION_TTL = 7 * 24 * 60 * 60 * 1000;
+const MAX_UPLOAD_BYTES = Number(process.env.MAX_UPLOAD_BYTES || 200 * 1024 * 1024);
+const UPLOAD_REQUEST_TIMEOUT_MS = Number(process.env.UPLOAD_REQUEST_TIMEOUT_MS || 10 * 60 * 1000);
 const ROOT = path.resolve(__dirname, "..");
 const DATA_DIR = path.join(__dirname, "data");
 const UPLOAD_DIR = path.join(__dirname, "uploads");
@@ -227,13 +229,52 @@ function clearAdminCookie(res) {
   res.setHeader("Set-Cookie", "admin_sid=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0");
 }
 
-function readBody(req) {
+function makeHttpError(message, statusCode, code) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  error.code = code;
+  return error;
+}
+
+function isClientAbortError(error) {
+  return Boolean(error) && (
+    error.code === "ECONNRESET" ||
+    error.code === "ECONNABORTED" ||
+    error.code === "CLIENT_ABORTED" ||
+    error.message === "aborted"
+  );
+}
+
+function readBody(req, options = {}) {
   return new Promise((resolve, reject) => {
     const chunks = [];
-    req.on("data", chunk => chunks.push(chunk));
-    req.on("end", () => resolve(Buffer.concat(chunks)));
+    const maxBytes = Number(options.maxBytes || 0);
+    let total = 0;
+    let settled = false;
+    const finish = callback => value => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      callback(value);
+    };
+    const done = finish(resolve);
+    const fail = finish(reject);
+    req.on("data", chunk => {
+      total += chunk.length;
+      if (maxBytes && total > maxBytes) {
+        fail(makeHttpError("上传文件过大，请压缩后重新上传", 413, "UPLOAD_TOO_LARGE"));
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on("aborted", () => {
+      fail(makeHttpError("上传已中断，请保持页面停留并重试", 499, "CLIENT_ABORTED"));
+    });
+    req.on("end", () => done(Buffer.concat(chunks)));
     req.on("error", error => {
-      reject(error);
+      fail(error);
     });
   });
 }
@@ -1283,7 +1324,16 @@ async function handle(req, res) {
   }
   if (req.method === "POST" && url.pathname === "/api/files") {
     const kind = url.searchParams.get("kind") || "asset";
-    const body = await readBody(req);
+    let body = null;
+    try {
+      body = await readBody(req, { maxBytes: MAX_UPLOAD_BYTES });
+    } catch (error) {
+      if (error.statusCode === 413) {
+        sendJson(res, 413, { message: error.message });
+        return;
+      }
+      throw error;
+    }
     const { files } = parseMultipart(body, req.headers["content-type"]);
     const file = files.file;
     if (!file) {
@@ -1497,14 +1547,10 @@ async function handle(req, res) {
 
 if (require.main === module) {
   ensureStore();
-  http.createServer((req, res) => {
+  const server = http.createServer((req, res) => {
     handle(req, res).catch(error => {
       const requestId = `server_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-      const isClientAbort = error && (
-        error.code === "ECONNRESET" ||
-        error.code === "ECONNABORTED" ||
-        error.message === "aborted"
-      );
+      const isClientAbort = isClientAbortError(error);
       const event = isClientAbort ? "client-abort" : "server-error";
       logError(event, {
         requestId,
@@ -1519,9 +1565,17 @@ if (require.main === module) {
         }
         return;
       }
+      if (error.statusCode) {
+        sendJson(res, error.statusCode, { message: error.message || "请求失败", requestId });
+        return;
+      }
       sendJson(res, 500, { message: error.message || "服务器错误", requestId });
     });
-  }).listen(PORT, () => {
+  });
+  server.requestTimeout = UPLOAD_REQUEST_TIMEOUT_MS;
+  server.headersTimeout = Math.max(60 * 1000, UPLOAD_REQUEST_TIMEOUT_MS + 5 * 1000);
+  server.timeout = UPLOAD_REQUEST_TIMEOUT_MS;
+  server.listen(PORT, () => {
     console.log(`Admin server: http://127.0.0.1:${PORT}/admin`);
   });
 }

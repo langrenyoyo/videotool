@@ -253,6 +253,20 @@ Page({
       });
   },
 
+  compressVideo(filePath) {
+    if (!wx.compressVideo) {
+      return Promise.resolve(filePath);
+    }
+    return new Promise(resolve => {
+      wx.compressVideo({
+        src: filePath,
+        quality: "medium",
+        success: res => resolve(res.tempFilePath || filePath),
+        fail: () => resolve(filePath)
+      });
+    });
+  },
+
   videoUploadConfig(kind) {
     const isDownloadVideo = kind === "downloadVideo";
     return {
@@ -284,45 +298,58 @@ Page({
         [config.errorKey]: ""
       });
       this.beginAssetUpload(config.maskText);
-      uploadAsset({
-        kind: "video",
-        filePath
-      }).then(data => {
-        if (this._uploadSeq[kind] !== seq) {
-          return;
-        }
-        this.setData({
-          [config.fileIdKey]: data.fileId || "",
-          [config.errorKey]: data.fileId ? "" : config.missingText
-        });
-        if (!data.fileId) {
+      this.compressVideo(filePath)
+        .then(uploadPath => {
+          if (this._uploadSeq[kind] !== seq) {
+            return Promise.reject({ stale: true });
+          }
+          if (uploadPath && uploadPath !== filePath) {
+            this.setData({ [config.pathKey]: uploadPath });
+          }
+          return uploadAsset({
+            kind: "video",
+            filePath: uploadPath || filePath
+          });
+        })
+        .then(data => {
+          if (this._uploadSeq[kind] !== seq) {
+            return;
+          }
+          this.setData({
+            [config.fileIdKey]: data.fileId || "",
+            [config.errorKey]: data.fileId ? "" : config.missingText
+          });
+          if (!data.fileId) {
+            wx.showToast({
+              title: config.missingText,
+              icon: "none"
+            });
+            return;
+          }
           wx.showToast({
-            title: config.missingText,
+            title: config.successText,
+            icon: "success"
+          });
+        }).catch(error => {
+          if (error && error.stale) {
+            return;
+          }
+          if (this._uploadSeq[kind] !== seq) {
+            return;
+          }
+          this.setData({
+            [config.fileIdKey]: "",
+            [config.errorKey]: error.message || config.failText
+          });
+          wx.showToast({
+            title: error.message || config.failText,
             icon: "none"
           });
-          return;
-        }
-        wx.showToast({
-          title: config.successText,
-          icon: "success"
+        }).finally(() => {
+          if (this._uploadSeq[kind] === seq) {
+            this.endAssetUpload();
+          }
         });
-      }).catch(error => {
-        if (this._uploadSeq[kind] !== seq) {
-          return;
-        }
-        this.setData({
-          [config.fileIdKey]: "",
-          [config.errorKey]: error.message || config.failText
-        });
-        wx.showToast({
-          title: error.message || config.failText,
-          icon: "none"
-        });
-      }).finally(() => {
-        if (this._uploadSeq[kind] === seq) {
-          this.endAssetUpload();
-        }
-      });
     };
     const isCancel = error => {
       const message = error && (error.errMsg || error.message) || "";
