@@ -3,7 +3,7 @@ const { getProject } = require("./project");
 const tasks = {
   qf4M84e: {
     code: "qf4M84e",
-    title: "舒缓伴侣后续",
+    title: "XXXX后续",
     sectionTitle: "重点内容",
     updatedAt: "2026-04-29 09:43",
     amountText: "6元",

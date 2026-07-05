@@ -21,7 +21,7 @@ const adminSessions = new Map();
 
 const defaultDb = {
   settings: {
-    projectName: "舒缓伴侣后续",
+    projectName: "XXXX后续",
     taskCode: "qf4M84e",
     sectionTitle: "重点内容",
     updatedAt: "2026-04-29 09:43",
@@ -138,7 +138,8 @@ function normalizeLogEntry(entry) {
       orderNo: "缺少订单号",
       gameIdImageFileId: "缺少 ID 截图文件 ID",
       orderImageFileId: "缺少订单截图文件 ID",
-      videoFileId: "缺少视频文件 ID，视频未上传成功或仍在上传"
+      videoFileId: "缺少充值视频文件 ID，视频未上传成功或仍在上传",
+      downloadVideoFileId: "缺少任意应用下载录屏文件 ID，视频未上传成功或仍在上传"
     };
     next.missingFieldText = next.missingFields.map(field => fieldText[field] || field);
   }
@@ -409,6 +410,8 @@ function htmlShell(title, body, script = "") {
     video { height: auto; max-height: 70vh; object-fit: contain; }
     img { margin-bottom: 10px; object-fit: cover; }
     .asset-grid { display: grid; gap: 12px; }
+    .asset-item { display: grid; gap: 6px; }
+    .asset-label { color: #334155; font-size: 13px; font-weight: 700; }
     .asset-title { color: #526071; font-size: 13px; font-weight: 600; margin: 10px 0 8px; }
     .actions { display: flex; gap: 10px; margin-top: 12px; }
     .empty { color: #6b7280; padding: 32px; text-align: center; }
@@ -1065,9 +1068,10 @@ function reviewDetailPage(submissionId, filters = {}) {
               </div>
               <div class="asset-title">资料预览</div>
               <div class="asset-grid">
-                \${item.gameIdImageUrl ? '<img src="' + item.gameIdImageUrl + '" alt="ID截图">' : ''}
-                \${item.orderImageUrl ? '<img src="' + item.orderImageUrl + '" alt="订单截图">' : ''}
-                \${item.videoUrl ? '<video src="' + item.videoUrl + '" controls></video>' : ''}
+                \${item.gameIdImageUrl ? '<div class="asset-item"><div class="asset-label">ID截图</div><img src="' + escapeHtml(item.gameIdImageUrl) + '" alt="ID截图"></div>' : ''}
+                \${item.orderImageUrl ? '<div class="asset-item"><div class="asset-label">订单截图</div><img src="' + escapeHtml(item.orderImageUrl) + '" alt="订单截图"></div>' : ''}
+                \${item.videoUrl ? '<div class="asset-item"><div class="asset-label">充值视频</div><video src="' + escapeHtml(item.videoUrl) + '" controls></video></div>' : ''}
+                \${item.downloadVideoUrl ? '<div class="asset-item"><div class="asset-label">任意应用下载录屏</div><video src="' + escapeHtml(item.downloadVideoUrl) + '" controls></video></div>' : ''}
               </div>
               <label>审核备注</label>
               <textarea id="remark-\${item.id}" rows="5" placeholder="可填写通过或驳回原因">\${escapeHtml(item.reviewRemark || '')}</textarea>
@@ -1101,7 +1105,8 @@ function reviewDetailPage(submissionId, filters = {}) {
 function withVideoUrl(req, item) {
   return {
     ...item,
-    videoUrl: item.videoFile ? `${publicBaseUrl(req)}/uploads/${encodeURIComponent(item.videoFile)}` : ""
+    videoUrl: item.videoFile ? `${publicBaseUrl(req)}/uploads/${encodeURIComponent(item.videoFile)}` : "",
+    downloadVideoUrl: item.downloadVideoFile ? `${publicBaseUrl(req)}/uploads/${encodeURIComponent(item.downloadVideoFile)}` : ""
   };
 }
 
@@ -1128,7 +1133,8 @@ function withAssetUrls(req, item) {
     ...item,
     gameIdImageUrl: assetUrl(item.gameIdImageFile),
     orderImageUrl: assetUrl(item.orderImageFile),
-    videoUrl: assetUrl(item.videoFile)
+    videoUrl: assetUrl(item.videoFile),
+    downloadVideoUrl: assetUrl(item.downloadVideoFile)
   };
 }
 
@@ -1415,7 +1421,8 @@ async function handle(req, res) {
       ["orderNo", body.orderNo],
       ["gameIdImageFileId", body.gameIdImageFileId],
       ["orderImageFileId", body.orderImageFileId],
-      ["videoFileId", body.videoFileId]
+      ["videoFileId", body.videoFileId],
+      ["downloadVideoFileId", body.downloadVideoFileId]
     ].filter(item => !item[1]).map(item => item[0]);
     if (missingFields.length) {
       logError("submission-validation-failed", {
@@ -1444,6 +1451,7 @@ async function handle(req, res) {
       gameIdImageFile: body.gameIdImageFileId,
       orderImageFile: body.orderImageFileId,
       videoFile: body.videoFileId,
+      downloadVideoFile: body.downloadVideoFileId,
       status: "pending",
       reviewRemark: "",
       createdAt: Date.now()

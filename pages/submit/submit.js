@@ -3,6 +3,14 @@ const { requestTask, uploadAsset, uploadSubmission, reportClientError } = requir
 const { validateSubmission } = require("../../utils/submissions");
 
 Page({
+  _uploadCount: 0,
+  _uploadSeq: {
+    gameId: 0,
+    order: 0,
+    video: 0,
+    downloadVideo: 0
+  },
+
   data: {
     task: getTask("qf4M84e"),
     projects: [],
@@ -13,15 +21,19 @@ Page({
     gameIdImagePath: "",
     orderImagePath: "",
     videoPath: "",
+    downloadVideoPath: "",
     gameId: "",
     orderNo: "",
     gameIdImageFileId: "",
     orderImageFileId: "",
     videoFileId: "",
-    recognizingGameId: false,
-    recognizingOrder: false,
-    videoUploading: false,
+    downloadVideoFileId: "",
+    assetUploading: false,
+    uploadMaskText: "正在上传，请稍候",
+    gameIdImageUploadError: "",
+    orderImageUploadError: "",
     videoUploadError: "",
+    downloadVideoUploadError: "",
     submitting: false
   },
 
@@ -53,6 +65,21 @@ Page({
         }
       })
       .catch(() => {});
+  },
+
+  beginAssetUpload(text) {
+    this._uploadCount += 1;
+    this.setData({
+      assetUploading: true,
+      uploadMaskText: text || "正在上传，请稍候"
+    });
+  },
+
+  endAssetUpload() {
+    this._uploadCount = Math.max(0, this._uploadCount - 1);
+    if (this._uploadCount === 0) {
+      this.setData({ assetUploading: false });
+    }
   },
 
   onProjectChange(event) {
@@ -93,11 +120,19 @@ Page({
   },
 
   chooseVideoFromCamera() {
-    this.pickVideo("camera");
+    this.pickVideo("camera", "video");
   },
 
   chooseVideoFromAlbum() {
-    this.pickVideo("album");
+    this.pickVideo("album", "video");
+  },
+
+  chooseDownloadVideoFromCamera() {
+    this.pickVideo("camera", "downloadVideo");
+  },
+
+  chooseDownloadVideoFromAlbum() {
+    this.pickVideo("album", "downloadVideo");
   },
 
   pickImage(useCamera = false, sourceType = null, kind = "gameId") {
@@ -112,18 +147,24 @@ Page({
           return;
         }
         const pathKey = kind === "order" ? "orderImagePath" : "gameIdImagePath";
+        const fileIdKey = kind === "order" ? "orderImageFileId" : "gameIdImageFileId";
+        const errorKey = kind === "order" ? "orderImageUploadError" : "gameIdImageUploadError";
+        const maskText = kind === "order" ? "正在上传订单截图" : "正在上传ID截图";
         this.setData({
-          [pathKey]: file.tempFilePath
+          [pathKey]: file.tempFilePath,
+          [fileIdKey]: "",
+          [errorKey]: ""
         });
+        this.beginAssetUpload(maskText);
         this.compressImage(file.tempFilePath)
           .then(compressedPath => {
             this.setData({
               [pathKey]: compressedPath
             });
-            this.uploadAndMockRecognize(kind, compressedPath);
+            this.uploadAndRecognize(kind, compressedPath);
           })
           .catch(() => {
-            this.uploadAndMockRecognize(kind, file.tempFilePath);
+            this.uploadAndRecognize(kind, file.tempFilePath);
           });
       }
     });
@@ -143,7 +184,90 @@ Page({
     });
   },
 
-  pickVideo(sourceType) {
+  uploadAndRecognize(kind, filePath) {
+    const seq = ++this._uploadSeq[kind];
+    uploadAsset({
+      kind,
+      filePath
+    })
+      .then(data => {
+        if (this._uploadSeq[kind] !== seq) {
+          return;
+        }
+        const fileIdKey = kind === "order" ? "orderImageFileId" : "gameIdImageFileId";
+        const errorKey = kind === "order" ? "orderImageUploadError" : "gameIdImageUploadError";
+        const recognize = data.recognize || {};
+        const next = {
+          [fileIdKey]: data.fileId || "",
+          [errorKey]: data.fileId ? "" : "图片上传未返回文件ID"
+        };
+        const gameId = recognize.gameId || recognize.username || recognize.value || "";
+        const orderNo = recognize.orderNo || recognize.value || "";
+        if (kind === "gameId" && gameId) {
+          next.gameId = gameId;
+        }
+        if (kind === "order" && orderNo) {
+          next.orderNo = orderNo;
+        }
+        this.setData(next);
+        if (!data.fileId) {
+          wx.showToast({
+            title: next[errorKey],
+            icon: "none"
+          });
+          return;
+        }
+        if (data.recognizeError) {
+          wx.showToast({
+            title: data.recognizeError,
+            icon: "none"
+          });
+          return;
+        }
+        wx.showToast({
+          title: kind === "order"
+            ? (orderNo ? "已识别订单号" : "未识别到订单号")
+            : (gameId ? "已识别ID" : "未识别到ID"),
+          icon: "none"
+        });
+      })
+      .catch(error => {
+        if (this._uploadSeq[kind] !== seq) {
+          return;
+        }
+        const errorKey = kind === "order" ? "orderImageUploadError" : "gameIdImageUploadError";
+        const fileIdKey = kind === "order" ? "orderImageFileId" : "gameIdImageFileId";
+        this.setData({
+          [fileIdKey]: "",
+          [errorKey]: error.message || "图片上传失败"
+        });
+        wx.showToast({
+          title: error.message || "图片上传失败",
+          icon: "none"
+        });
+      })
+      .finally(() => {
+        if (this._uploadSeq[kind] === seq) {
+          this.endAssetUpload();
+        }
+      });
+  },
+
+  videoUploadConfig(kind) {
+    const isDownloadVideo = kind === "downloadVideo";
+    return {
+      pathKey: isDownloadVideo ? "downloadVideoPath" : "videoPath",
+      fileIdKey: isDownloadVideo ? "downloadVideoFileId" : "videoFileId",
+      errorKey: isDownloadVideo ? "downloadVideoUploadError" : "videoUploadError",
+      maskText: isDownloadVideo ? "正在上传任意应用下载录屏" : "正在上传视频",
+      missingText: isDownloadVideo ? "任意应用下载录屏上传未返回文件ID" : "视频上传未返回文件ID",
+      failText: isDownloadVideo ? "任意应用下载录屏上传失败" : "视频上传失败",
+      successText: isDownloadVideo ? "任意应用下载录屏上传成功" : "视频上传成功"
+    };
+  },
+
+  pickVideo(sourceType, kind = "video") {
+    const config = this.videoUploadConfig(kind);
     const failMessages = [];
     const onSuccess = filePath => {
       if (!filePath) {
@@ -153,31 +277,51 @@ Page({
         });
         return;
       }
+      const seq = ++this._uploadSeq[kind];
       this.setData({
-        videoPath: filePath,
-        videoFileId: "",
-        videoUploading: true,
-        videoUploadError: ""
+        [config.pathKey]: filePath,
+        [config.fileIdKey]: "",
+        [config.errorKey]: ""
       });
+      this.beginAssetUpload(config.maskText);
       uploadAsset({
         kind: "video",
         filePath
       }).then(data => {
+        if (this._uploadSeq[kind] !== seq) {
+          return;
+        }
         this.setData({
-          videoFileId: data.fileId || "",
-          videoUploading: false,
-          videoUploadError: data.fileId ? "" : "视频上传未返回文件ID"
+          [config.fileIdKey]: data.fileId || "",
+          [config.errorKey]: data.fileId ? "" : config.missingText
+        });
+        if (!data.fileId) {
+          wx.showToast({
+            title: config.missingText,
+            icon: "none"
+          });
+          return;
+        }
+        wx.showToast({
+          title: config.successText,
+          icon: "success"
         });
       }).catch(error => {
+        if (this._uploadSeq[kind] !== seq) {
+          return;
+        }
         this.setData({
-          videoFileId: "",
-          videoUploading: false,
-          videoUploadError: error.message || "视频上传失败"
+          [config.fileIdKey]: "",
+          [config.errorKey]: error.message || config.failText
         });
         wx.showToast({
-          title: error.message || "视频上传失败",
+          title: error.message || config.failText,
           icon: "none"
         });
+      }).finally(() => {
+        if (this._uploadSeq[kind] === seq) {
+          this.endAssetUpload();
+        }
       });
     };
     const isCancel = error => {
@@ -187,7 +331,7 @@ Page({
     const rememberFail = error => {
       const message = error && (error.errMsg || error.message) || "未知错误";
       failMessages.push(message);
-      console.warn("[pickVideo]", sourceType, message);
+      console.warn("[pickVideo]", kind, sourceType, message);
     };
     const showFinalFail = () => {
       const last = failMessages[failMessages.length - 1] || "";
@@ -254,64 +398,10 @@ Page({
     chooseByVideo(() => chooseByMedia(showFinalFail));
   },
 
-  uploadAndMockRecognize(kind, filePath) {
-    const recognizingKey = kind === "order" ? "recognizingOrder" : "recognizingGameId";
-    this.setData({ [recognizingKey]: true });
-    uploadAsset({
-      kind,
-      filePath
-    })
-      .then(data => {
-        const fileIdKey = kind === "order" ? "orderImageFileId" : "gameIdImageFileId";
-        const recognize = data.recognize || {};
-        const next = {
-          [fileIdKey]: data.fileId || ""
-        };
-        const gameId = recognize.gameId || recognize.username || recognize.value || "";
-        const orderNo = recognize.orderNo || recognize.value || "";
-        if (kind === "gameId" && gameId) {
-          next.gameId = gameId;
-        }
-        if (kind === "order" && orderNo) {
-          next.orderNo = orderNo;
-        }
-        this.setData(next);
-        if (data.recognizeError) {
-          wx.showToast({
-            title: data.recognizeError,
-            icon: "none"
-          });
-          return;
-        }
-        wx.showToast({
-          title: kind === "order"
-            ? (orderNo ? "已识别订单号" : "未识别到订单号")
-            : (gameId ? "已识别ID" : "未识别到ID"),
-          icon: "none"
-        });
-      })
-      .catch(error => {
-        wx.showToast({
-          title: error.message || "AI识别失败",
-          icon: "none"
-        });
-      })
-      .finally(() => {
-        this.setData({ [recognizingKey]: false });
-      });
-  },
-
   submit() {
-    if (this.data.videoUploading) {
+    if (this.data.assetUploading) {
       wx.showToast({
-        title: "视频正在上传，请稍后提交",
-        icon: "none"
-      });
-      return;
-    }
-    if (this.data.videoPath && !this.data.videoFileId) {
-      wx.showToast({
-        title: this.data.videoUploadError || "视频未上传成功，请重新选择视频",
+        title: "文件正在上传，请稍后提交",
         icon: "none"
       });
       return;
@@ -326,9 +416,11 @@ Page({
       gameIdImagePath: this.data.gameIdImagePath,
       orderImagePath: this.data.orderImagePath,
       videoPath: this.data.videoPath,
+      downloadVideoPath: this.data.downloadVideoPath,
       gameIdImageFileId: this.data.gameIdImageFileId,
       orderImageFileId: this.data.orderImageFileId,
-      videoFileId: this.data.videoFileId
+      videoFileId: this.data.videoFileId,
+      downloadVideoFileId: this.data.downloadVideoFileId
     };
     const error = validateSubmission(input);
     if (error) {
@@ -371,9 +463,11 @@ Page({
             hasGameIdImagePath: Boolean(input.gameIdImagePath),
             hasOrderImagePath: Boolean(input.orderImagePath),
             hasVideoPath: Boolean(input.videoPath),
+            hasDownloadVideoPath: Boolean(input.downloadVideoPath),
             hasGameIdImageFileId: Boolean(input.gameIdImageFileId),
             hasOrderImageFileId: Boolean(input.orderImageFileId),
-            hasVideoFileId: Boolean(input.videoFileId)
+            hasVideoFileId: Boolean(input.videoFileId),
+            hasDownloadVideoFileId: Boolean(input.downloadVideoFileId)
           }
         }).catch(() => {});
         wx.showToast({

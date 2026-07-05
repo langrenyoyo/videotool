@@ -17,6 +17,7 @@ function createSubmission(input) {
     gameIdImageFileId: input.gameIdImageFileId || "",
     orderImageFileId: input.orderImageFileId || "",
     videoFileId: input.videoFileId || "",
+    downloadVideoFileId: input.downloadVideoFileId || "",
     gameId: String(input.gameId || "").trim(),
     orderNo: String(input.orderNo || "").trim(),
     status: "pending",
@@ -39,6 +40,21 @@ function validateSubmission(input) {
   }
   if (!input.videoPath) {
     return "请上传充值视频";
+  }
+  if (!input.downloadVideoPath) {
+    return "请上传任意应用下载录屏";
+  }
+  if (!input.gameIdImageFileId) {
+    return "ID截图未上传成功，请重新选择";
+  }
+  if (!input.orderImageFileId) {
+    return "订单截图未上传成功，请重新选择";
+  }
+  if (!input.videoFileId) {
+    return "充值视频未上传成功，请重新选择";
+  }
+  if (!input.downloadVideoFileId) {
+    return "任意应用下载录屏未上传成功，请重新选择";
   }
   return "";
 }
