@@ -81,6 +81,22 @@
     <view wx:if="{{videoFileId}}" class="file-summary video-upload-summary">
       <view class="file-line">已上传充值视频</view>
     </view>
+    <view class="video-entry">
+      <view class="video-entry-title">任意应用下载录屏</view>
+      <view class="upload-row video-entry-row">
+        <view class="upload-btn" bindtap="chooseDownloadVideoFromCamera">
+          <view class="upload-icon">录</view>
+          <view class="upload-text">拍摄上传</view>
+        </view>
+        <view class="upload-btn" bindtap="chooseDownloadVideoFromAlbum">
+          <view class="upload-icon">册</view>
+          <view class="upload-text">相册选择</view>
+        </view>
+      </view>
+      <view wx:if="{{downloadVideoFileId}}" class="file-summary video-upload-summary">
+        <view class="file-line">已上传任意应用下载录屏</view>
+      </view>
+    </view>
     <view wx:if="{{gameIdImageFileId || orderImageFileId}}" class="file-summary">
       <view wx:if="{{gameIdImageFileId}}" class="file-line">已上传ID截图</view>
       <view wx:if="{{orderImageFileId}}" class="file-line">已上传订单截图</view>

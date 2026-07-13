@@ -1,5 +1,5 @@
 const API_BASE = "https://video.heshan1.shop";
-const BUILD_TAG = "single-video-20260706";
+const BUILD_TAG = "dual-video-20260707";
 
 function errorMessage(error, fallback) {
   if (!error) {

@@ -140,7 +140,8 @@ function normalizeLogEntry(entry) {
       orderNo: "缺少订单号",
       gameIdImageFileId: "缺少 ID 截图文件 ID",
       orderImageFileId: "缺少订单截图文件 ID",
-      videoFileId: "缺少充值视频文件 ID，视频未上传成功或仍在上传"
+      videoFileId: "缺少充值视频文件 ID，视频未上传成功或仍在上传",
+      downloadVideoFileId: "缺少任意应用下载录屏文件 ID，视频未上传成功或仍在上传"
     };
     next.missingFieldText = next.missingFields.map(field => fieldText[field] || field);
   }
@@ -406,14 +407,16 @@ function htmlShell(title, body, script = "") {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${title}</title>
   <style>
+    :root { --bg: #f5f6f8; --panel: #fff; --line: #e1e6ef; --text: #1f2329; --muted: #637083; --blue: #1769e0; --blue-soft: #eaf2ff; --green: #16763b; --green-soft: #eaf8ef; --red: #c23a2b; --red-soft: #fff1f0; --amber: #ad6800; --amber-soft: #fff7e6; }
     * { box-sizing: border-box; }
-    body { margin: 0; background: #f5f6f8; color: #1f2329; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-    header { background: #fff; border-bottom: 1px solid #e7e9ee; padding: 18px 28px; }
-    h1 { margin: 0; font-size: 22px; }
-    main { max-width: 1120px; margin: 0 auto; padding: 24px; }
-    nav { display: flex; gap: 10px; margin-top: 12px; }
-    nav a { background: #eef2f7; border-radius: 6px; color: #1f2329; padding: 8px 12px; text-decoration: none; }
-    section, article { background: #fff; border: 1px solid #e7e9ee; border-radius: 8px; padding: 20px; }
+    body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    header { background: rgba(255,255,255,.96); border-bottom: 1px solid var(--line); padding: 16px 28px; position: sticky; top: 0; z-index: 20; backdrop-filter: blur(8px); }
+    h1 { margin: 0; font-size: 21px; letter-spacing: 0; }
+    main { max-width: 1180px; margin: 0 auto; padding: 24px; }
+    nav { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    nav a { align-items: center; background: #eef2f7; border: 1px solid transparent; border-radius: 6px; color: #1f2329; display: inline-flex; min-height: 36px; padding: 8px 12px; text-decoration: none; }
+    nav a.active { background: var(--blue-soft); border-color: #bdd6ff; color: var(--blue); font-weight: 700; }
+    section, article { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 20px; }
     .settings { display: grid; gap: 14px; }
     .settings-grid { display: grid; grid-template-columns: 1fr 180px 180px; gap: 12px; }
     .project-row { align-items: center; display: grid; gap: 12px; grid-template-columns: 1fr auto auto; }
@@ -421,37 +424,48 @@ function htmlShell(title, body, script = "") {
     .project-list { display: grid; gap: 10px; }
     label { display: block; color: #4b5563; font-size: 13px; margin-bottom: 8px; }
     input, select, textarea { width: 100%; border: 1px solid #d7dce5; border-radius: 6px; font: inherit; padding: 10px 12px; }
-    button { border: 0; border-radius: 6px; cursor: pointer; font: inherit; font-weight: 600; padding: 10px 16px; }
-    .primary { background: #1677ff; color: #fff; }
+    input:focus, select:focus, textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(23,105,224,.12); outline: none; }
+    button, .button-link { border: 0; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font: inherit; font-weight: 600; min-height: 38px; padding: 10px 16px; }
+    button:disabled { cursor: not-allowed; opacity: .62; }
+    .primary { background: var(--blue); color: #fff; }
     .secondary { background: #eef2f7; color: #1f2329; }
-    .danger { background: #fff1f0; color: #c23a2b; }
-    .ok { background: #eaf8ef; color: #16763b; }
-    .toolbar { align-items: center; display: flex; justify-content: space-between; margin: 24px 0 14px; }
+    .danger { background: var(--red-soft); color: var(--red); }
+    .ok { background: var(--green-soft); color: var(--green); }
+    .toolbar { align-items: center; display: flex; gap: 14px; justify-content: space-between; margin: 24px 0 14px; }
     .filter-panel { margin: 0 0 16px; }
-    .filter-grid { align-items: end; display: grid; gap: 12px; grid-template-columns: 1fr 1fr 1fr auto auto; }
+    .filter-grid { align-items: end; display: grid; gap: 12px; grid-template-columns: 1.4fr 1fr 1fr 1fr auto; }
     .filter-actions { display: flex; gap: 10px; }
-    .stats-grid { display: grid; gap: 12px; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0 0 16px; }
+    .stats-grid { display: grid; gap: 12px; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0 0 16px; }
     .stat-card { background: #fff; border: 1px solid #e7e9ee; border-radius: 8px; padding: 16px 18px; }
     .stat-label { color: #6b7280; font-size: 13px; }
     .stat-value { font-size: 28px; font-weight: 800; line-height: 1.2; margin-top: 6px; }
+    .stat-total .stat-value { color: var(--blue); }
     .stat-pending .stat-value { color: #ad6800; }
     .stat-rejected .stat-value { color: #c23a2b; }
     .stat-approved .stat-value { color: #16763b; }
     .list { display: grid; gap: 16px; }
     .record-head { align-items: flex-start; display: flex; gap: 16px; justify-content: space-between; }
+    .record-card { display: grid; gap: 14px; }
+    .record-meta { color: var(--muted); display: flex; flex-wrap: wrap; gap: 8px 14px; font-size: 13px; margin-top: 7px; }
+    .record-actions { align-items: center; display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
     .title { font-size: 17px; font-weight: 700; }
     .muted { color: #6b7280; font-size: 13px; }
     .status { border-radius: 999px; font-size: 13px; padding: 5px 10px; }
     .pending { background: #fff7e6; color: #ad6800; }
     .approved { background: #eaf8ef; color: #16763b; }
     .rejected { background: #fff1f0; color: #c23a2b; }
-    .grid { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr) 360px; margin-top: 16px; }
+    .grid { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr) 340px; margin-top: 16px; }
+    .review-aside { align-self: start; display: grid; gap: 14px; position: sticky; top: 112px; }
+    .review-panel { display: grid; gap: 12px; }
+    .remark-templates { display: flex; flex-wrap: wrap; gap: 8px; }
     video, img { background: #000; border-radius: 6px; display: block; width: 100%; }
     video { height: auto; max-height: 70vh; object-fit: contain; }
-    img { margin-bottom: 10px; object-fit: cover; }
+    img { margin-bottom: 10px; max-height: 520px; object-fit: contain; }
     .asset-grid { display: grid; gap: 12px; }
     .asset-item { display: grid; gap: 6px; }
+    .asset-top { align-items: center; display: flex; gap: 8px; justify-content: space-between; }
     .asset-label { color: #334155; font-size: 13px; font-weight: 700; }
+    .asset-missing { background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 6px; color: #64748b; font-size: 13px; padding: 18px; text-align: center; }
     .asset-title { color: #526071; font-size: 13px; font-weight: 600; margin: 10px 0 8px; }
     .actions { display: flex; gap: 10px; margin-top: 12px; }
     .empty { color: #6b7280; padding: 32px; text-align: center; }
@@ -459,14 +473,18 @@ function htmlShell(title, body, script = "") {
     .nav-card a { color: inherit; text-decoration: none; }
     .field-grid { display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .field-line { background: #f8fafc; border: 1px solid #e7e9ee; border-radius: 6px; padding: 10px 12px; }
+    .field-head { align-items: center; display: flex; gap: 8px; justify-content: space-between; }
     .field-name { color: #6b7280; font-size: 12px; margin-bottom: 4px; }
     .field-value { font-weight: 700; word-break: break-all; }
+    .mini { font-size: 12px; min-height: 28px; padding: 5px 9px; }
     .log-item { display: grid; gap: 10px; }
     .log-head { align-items: center; display: flex; flex-wrap: wrap; gap: 8px 12px; justify-content: space-between; }
     .log-event { font-weight: 800; }
     .log-meta { color: #6b7280; font-size: 12px; }
     .log-detail { background: #f8fafc; border: 1px solid #e7e9ee; border-radius: 6px; overflow: auto; padding: 12px; white-space: pre-wrap; word-break: break-word; }
-    @media (max-width: 780px) { .settings-grid, .grid, .filter-grid, .stats-grid, .nav-card { grid-template-columns: 1fr; } main { padding: 16px; } .filter-actions { display: grid; grid-template-columns: 1fr 1fr; } }
+    .toast { background: #172033; border-radius: 8px; bottom: 22px; box-shadow: 0 12px 30px rgba(15, 23, 42, .22); color: #fff; left: 50%; opacity: 0; padding: 11px 16px; pointer-events: none; position: fixed; transform: translate(-50%, 12px); transition: .18s ease; z-index: 50; }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+    @media (max-width: 780px) { .settings-grid, .grid, .filter-grid, .stats-grid, .nav-card, .field-grid { grid-template-columns: 1fr; } main { padding: 16px; } .filter-actions { display: grid; grid-template-columns: 1fr 1fr; } .record-head, .toolbar { align-items: stretch; flex-direction: column; } .record-actions { justify-content: flex-start; } .review-aside { position: static; } }
   </style>
 </head>
 <body>
@@ -482,7 +500,25 @@ function htmlShell(title, body, script = "") {
   <main>
     ${body}
   </main>
+  <div id="toast" class="toast"></div>
   <script>
+    (function initShell() {
+      const path = location.pathname;
+      document.querySelectorAll('nav a').forEach(link => {
+        const href = link.getAttribute('href');
+        if (href !== '/admin/logout' && (path === href || path.startsWith(href + '/'))) {
+          link.classList.add('active');
+        }
+      });
+      window.showToast = function(message) {
+        const toast = document.querySelector('#toast');
+        if (!toast) return;
+        toast.textContent = message || '';
+        toast.classList.add('show');
+        clearTimeout(window.__toastTimer);
+        window.__toastTimer = setTimeout(() => toast.classList.remove('show'), 1800);
+      };
+    })();
     ${script}
   </script>
 </body>
@@ -760,7 +796,7 @@ function settingsPage() {
         </div>
       </div>
       <div>
-        <button class="primary" onclick="saveSettings()">保存前端信息</button>
+        <button class="primary" id="saveSettingsBtn" onclick="saveSettings()">保存前端信息</button>
       </div>
     </section>
   `, `
@@ -768,7 +804,7 @@ function settingsPage() {
     let projects = [];
     async function request(url, options) {
       const res = await fetch(url, options);
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.message || '请求失败');
       return data;
     }
@@ -836,6 +872,8 @@ function settingsPage() {
       renderProjects();
     }
     async function saveSettings() {
+      const saveBtn = document.querySelector('#saveSettingsBtn');
+      saveBtn.disabled = true;
       const cleanProjects = projects
         .map(item => ({ id: item.id, name: String(item.name || '').trim() }))
         .filter(item => item.name);
@@ -846,32 +884,38 @@ function settingsPage() {
           name: defaultProjectName
         });
       }
-      await request('/api/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          projectName: defaultProjectName,
-          projects: cleanProjects,
-          amountText: document.querySelector('#amountText').value,
-          sectionTitle: document.querySelector('#sectionTitle').value,
-          content: document.querySelector('#content').value,
-          stepsText: document.querySelector('#stepsText').value,
-          warningsText: document.querySelector('#warningsText').value,
-          requiredMaterialsText: document.querySelector('#requiredMaterialsText').value,
-          formDesc: document.querySelector('#formDesc').value,
-          gameIdImageTitle: document.querySelector('#gameIdImageTitle').value,
-          gameIdImageTip: document.querySelector('#gameIdImageTip').value,
-          gameIdFieldLabel: document.querySelector('#gameIdFieldLabel').value,
-          orderImageTitle: document.querySelector('#orderImageTitle').value,
-          orderImageTip: document.querySelector('#orderImageTip').value,
-          orderFieldLabel: document.querySelector('#orderFieldLabel').value,
-          videoTitle: document.querySelector('#videoTitle').value,
-          submitButtonText: document.querySelector('#submitButtonText').value,
-          submitTip: document.querySelector('#submitTip').value
-        })
-      });
-      alert('已保存');
-      loadData();
+      try {
+        await request('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            projectName: defaultProjectName,
+            projects: cleanProjects,
+            amountText: document.querySelector('#amountText').value,
+            sectionTitle: document.querySelector('#sectionTitle').value,
+            content: document.querySelector('#content').value,
+            stepsText: document.querySelector('#stepsText').value,
+            warningsText: document.querySelector('#warningsText').value,
+            requiredMaterialsText: document.querySelector('#requiredMaterialsText').value,
+            formDesc: document.querySelector('#formDesc').value,
+            gameIdImageTitle: document.querySelector('#gameIdImageTitle').value,
+            gameIdImageTip: document.querySelector('#gameIdImageTip').value,
+            gameIdFieldLabel: document.querySelector('#gameIdFieldLabel').value,
+            orderImageTitle: document.querySelector('#orderImageTitle').value,
+            orderImageTip: document.querySelector('#orderImageTip').value,
+            orderFieldLabel: document.querySelector('#orderFieldLabel').value,
+            videoTitle: document.querySelector('#videoTitle').value,
+            submitButtonText: document.querySelector('#submitButtonText').value,
+            submitTip: document.querySelector('#submitTip').value
+          })
+        });
+        showToast('已保存');
+        loadData();
+      } catch (error) {
+        showToast(error.message);
+      } finally {
+        saveBtn.disabled = false;
+      }
     }
     function escapeHtml(value) {
       return String(value).replace(/[&<>"']/g, char => ({
@@ -888,11 +932,18 @@ function settingsPage() {
 function reviewPage() {
   return htmlShell("订单审核", `
     <div class="toolbar">
-      <h2 style="margin:0;font-size:18px;">用户订单列表</h2>
-      <button class="secondary" onclick="loadData()">刷新</button>
+      <div>
+        <h2 style="margin:0;font-size:18px;">用户订单列表</h2>
+        <div class="muted">按状态、时间、ID、订单号或项目快速定位提交记录。</div>
+      </div>
+      <button class="secondary" id="refreshBtn" onclick="loadData()">刷新</button>
     </div>
     <section class="filter-panel">
       <div class="filter-grid">
+        <div>
+          <label for="keywordFilter">搜索</label>
+          <input id="keywordFilter" placeholder="输入 ID、订单号、项目名或提交ID" onkeydown="handleFilterKey(event)">
+        </div>
         <div>
           <label for="statusFilter">审核状态</label>
           <select id="statusFilter" onchange="loadData()">
@@ -917,6 +968,10 @@ function reviewPage() {
       </div>
     </section>
     <div id="stats" class="stats-grid">
+      <section class="stat-card stat-total">
+        <div class="stat-label">当前结果</div>
+        <div class="stat-value" id="totalCount">0</div>
+      </section>
       <section class="stat-card stat-pending">
         <div class="stat-label">待审核</div>
         <div class="stat-value" id="pendingCount">0</div>
@@ -935,7 +990,7 @@ function reviewPage() {
     const statusText = ${statusText.toString()};
     async function request(url, options) {
       const res = await fetch(url, options);
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.message || '请求失败');
       return data;
     }
@@ -944,6 +999,7 @@ function reviewPage() {
     }
     function getFilters() {
       return {
+        keyword: document.querySelector('#keywordFilter').value.trim(),
         status: document.querySelector('#statusFilter').value,
         startDate: document.querySelector('#startDate').value,
         endDate: document.querySelector('#endDate').value
@@ -956,11 +1012,25 @@ function reviewPage() {
         const createdAt = Number(item.createdAt || 0);
         if (filters.status && (item.status || 'pending') !== filters.status) return false;
         if (createdAt < startAt || createdAt > endAt) return false;
+        if (filters.keyword) {
+          const keyword = filters.keyword.toLowerCase();
+          const haystack = [
+            item.id,
+            item.gameId,
+            item.xuanhuaId,
+            item.orderNo,
+            item.projectName,
+            item.taskTitle,
+            item.clientBuildTag
+          ].join(' ').toLowerCase();
+          if (!haystack.includes(keyword)) return false;
+        }
         return true;
       });
     }
     function syncUrl(filters) {
       const params = new URLSearchParams();
+      if (filters.keyword) params.set('keyword', filters.keyword);
       if (filters.status) params.set('status', filters.status);
       if (filters.startDate) params.set('startDate', filters.startDate);
       if (filters.endDate) params.set('endDate', filters.endDate);
@@ -969,15 +1039,22 @@ function reviewPage() {
     }
     function readUrlFilters() {
       const params = new URLSearchParams(location.search);
+      document.querySelector('#keywordFilter').value = params.get('keyword') || '';
       document.querySelector('#statusFilter').value = params.get('status') || '';
       document.querySelector('#startDate').value = params.get('startDate') || '';
       document.querySelector('#endDate').value = params.get('endDate') || '';
     }
     function resetFilters() {
+      document.querySelector('#keywordFilter').value = '';
       document.querySelector('#statusFilter').value = '';
       document.querySelector('#startDate').value = '';
       document.querySelector('#endDate').value = '';
       loadData();
+    }
+    function handleFilterKey(event) {
+      if (event.key === 'Enter') {
+        loadData();
+      }
     }
     function updateStats(submissions) {
       const stats = submissions.reduce((acc, item) => {
@@ -986,18 +1063,31 @@ function reviewPage() {
         acc[status] += 1;
         return acc;
       }, { pending: 0, rejected: 0, approved: 0 });
+      document.querySelector('#totalCount').textContent = submissions.length;
       document.querySelector('#pendingCount').textContent = stats.pending;
       document.querySelector('#rejectedCount').textContent = stats.rejected;
       document.querySelector('#approvedCount').textContent = stats.approved;
     }
     async function loadData() {
-      const submissions = await request('/api/admin/submissions');
+      const list = document.querySelector('#list');
+      const refreshBtn = document.querySelector('#refreshBtn');
+      refreshBtn.disabled = true;
+      list.innerHTML = '<section class="empty">正在加载提交记录</section>';
+      let submissions = [];
+      try {
+        submissions = await request('/api/admin/submissions');
+      } catch (error) {
+        list.innerHTML = '<section class="empty">' + escapeHtml(error.message) + '</section>';
+        showToast(error.message);
+        return;
+      } finally {
+        refreshBtn.disabled = false;
+      }
       const filters = getFilters();
       syncUrl(filters);
       const filtered = applyFilters(submissions, filters);
       updateStats(filtered);
       const records = sortSubmissions(filtered);
-      const list = document.querySelector('#list');
       if (!records.length) {
         list.innerHTML = '<section class="empty">暂无符合条件的提交资料</section>';
         return;
@@ -1006,27 +1096,48 @@ function reviewPage() {
       if (filters.status) filterQuery.set('status', filters.status);
       if (filters.startDate) filterQuery.set('startDate', filters.startDate);
       if (filters.endDate) filterQuery.set('endDate', filters.endDate);
+      if (filters.keyword) filterQuery.set('keyword', filters.keyword);
       const filterSuffix = filterQuery.toString() ? '&' + filterQuery.toString() : '';
       list.innerHTML = records.map(item => \`
-        <article>
+        <article class="record-card">
           <div class="record-head">
             <div>
               <div class="title">用户ID：\${escapeHtml(item.gameId || item.xuanhuaId || '未识别ID')}</div>
-              <div class="muted">项目：\${escapeHtml(item.projectName || item.taskTitle || '-')}</div>
-              <div class="muted">订单号：\${escapeHtml(item.orderNo || '-')} · 提交时间：\${item.createdAt ? new Date(item.createdAt).toLocaleString() : '-'}</div>
+              <div class="record-meta">
+                <span>项目：\${escapeHtml(item.projectName || item.taskTitle || '-')}</span>
+                <span>订单号：\${escapeHtml(item.orderNo || '-')}</span>
+                <span>提交时间：\${item.createdAt ? new Date(item.createdAt).toLocaleString() : '-'}</span>
+              </div>
             </div>
-            <div style="display:flex;align-items:center;gap:10px;">
+            <div class="record-actions">
               <div class="status \${item.status || 'pending'}">\${statusText(item.status)}</div>
-              <a class="primary" style="text-decoration:none;" href="/admin/review-detail?submissionId=\${encodeURIComponent(item.id)}\${filterSuffix}">查看详情</a>
+              \${(item.status || 'pending') === 'pending' ? '<button class="ok mini" onclick="quickReview(\\'' + escapeJs(item.id) + '\\', \\'approved\\')">通过</button><button class="danger mini" onclick="quickReview(\\'' + escapeJs(item.id) + '\\', \\'rejected\\')">驳回</button>' : ''}
+              <a class="primary button-link mini" style="text-decoration:none;" href="/admin/review-detail?submissionId=\${encodeURIComponent(item.id)}\${filterSuffix}">查看详情</a>
             </div>
           </div>
         </article>
       \`).join('');
     }
+    async function quickReview(id, status) {
+      const remark = status === 'rejected'
+        ? prompt('请输入驳回原因，留空则使用默认备注', '资料不完整，请重新提交')
+        : '资料清晰，审核通过';
+      if (remark === null) return;
+      await request('/api/admin/submissions/' + encodeURIComponent(id) + '/review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status, reviewRemark: remark })
+      });
+      showToast(status === 'rejected' ? '已驳回' : '已通过');
+      loadData();
+    }
     function escapeHtml(value) {
-      return String(value).replace(/[&<>"']/g, char => ({
+      return String(value == null ? '' : value).replace(/[&<>"']/g, char => ({
         '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
       }[char]));
+    }
+    function escapeJs(value) {
+      return String(value == null ? '' : value).replace(/\\\\/g, '\\\\\\\\').replace(/'/g, "\\\\'");
     }
     readUrlFilters();
     loadData().catch(error => alert(error.message));
@@ -1034,7 +1145,7 @@ function reviewPage() {
 }
 
 function reviewDetailPage(submissionId, filters = {}) {
-  const safeSubmissionId = String(submissionId || "").replace(/[&<>"']/g, char => ({
+  const escapeServerHtml = value => String(value || "").replace(/[&<>"']/g, char => ({
     "&": "&amp;",
     "<": "&lt;",
     ">": "&gt;",
@@ -1042,14 +1153,16 @@ function reviewDetailPage(submissionId, filters = {}) {
     "'": "&#39;"
   }[char]));
   const backParams = new URLSearchParams();
+  if (filters.keyword) backParams.set("keyword", filters.keyword);
   if (filters.status) backParams.set("status", filters.status);
   if (filters.startDate) backParams.set("startDate", filters.startDate);
   if (filters.endDate) backParams.set("endDate", filters.endDate);
   const backUrl = `/admin/review${backParams.toString() ? `?${backParams.toString()}` : ""}`;
   const filterSummary = [
+    filters.keyword ? `搜索：${escapeServerHtml(filters.keyword)}` : "",
     filters.status ? `状态：${statusText(filters.status)}` : "",
-    filters.startDate ? `开始：${filters.startDate}` : "",
-    filters.endDate ? `结束：${filters.endDate}` : ""
+    filters.startDate ? `开始：${escapeServerHtml(filters.startDate)}` : "",
+    filters.endDate ? `结束：${escapeServerHtml(filters.endDate)}` : ""
   ].filter(Boolean).join(" · ");
   return htmlShell("审核详情", `
     <div class="toolbar">
@@ -1062,6 +1175,7 @@ function reviewDetailPage(submissionId, filters = {}) {
   `, `
     const statusText = ${statusText.toString()};
     const filters = ${JSON.stringify({
+      keyword: filters.keyword || "",
       status: filters.status || "",
       startDate: filters.startDate || "",
       endDate: filters.endDate || ""
@@ -1079,6 +1193,11 @@ function reviewDetailPage(submissionId, filters = {}) {
         const createdAt = Number(item.createdAt || 0);
         if (filters.status && (item.status || 'pending') !== filters.status) return false;
         if (createdAt < startAt || createdAt > endAt) return false;
+        if (filters.keyword) {
+          const keyword = filters.keyword.toLowerCase();
+          const haystack = [item.id, item.gameId, item.xuanhuaId, item.orderNo, item.projectName, item.taskTitle].join(' ').toLowerCase();
+          if (!haystack.includes(keyword)) return false;
+        }
         return true;
       });
     }
@@ -1090,54 +1209,127 @@ function reviewDetailPage(submissionId, filters = {}) {
         return;
       }
       list.innerHTML = submissions.map(item => \`
-        <article>
+        <article class="record-card">
           <div class="record-head">
             <div>
               <div class="title">\${escapeHtml(item.projectName || item.taskTitle || '')}</div>
-              <div class="muted">提交时间：\${new Date(item.createdAt).toLocaleString()}</div>
+              <div class="record-meta">
+                <span>提交时间：\${item.createdAt ? new Date(item.createdAt).toLocaleString() : '-'}</span>
+                <span>提交ID：\${escapeHtml(item.id || '')}</span>
+              </div>
             </div>
             <div class="status \${item.status || 'pending'}">\${statusText(item.status)}</div>
           </div>
           <div class="grid">
             <div>
               <div class="field-grid">
-                <div class="field-line"><div class="field-name">项目名称</div><div class="field-value">\${escapeHtml(item.projectName || item.taskTitle || '')}</div></div>
-                <div class="field-line"><div class="field-name">ID</div><div class="field-value">\${escapeHtml(item.gameId || '')}</div></div>
-                <div class="field-line"><div class="field-name">订单号</div><div class="field-value">\${escapeHtml(item.orderNo || '')}</div></div>
-                <div class="field-line"><div class="field-name">提交ID</div><div class="field-value">\${escapeHtml(item.id || '')}</div></div>
+                \${fieldBlock('项目名称', item.projectName || item.taskTitle || '')}
+                \${fieldBlock('ID', item.gameId || '')}
+                \${fieldBlock('订单号', item.orderNo || '')}
+                \${fieldBlock('提交ID', item.id || '')}
               </div>
               <div class="asset-title">资料预览</div>
               <div class="asset-grid">
-                \${item.gameIdImageUrl ? '<div class="asset-item"><div class="asset-label">ID截图</div><img src="' + escapeHtml(item.gameIdImageUrl) + '" alt="ID截图"></div>' : ''}
-                \${item.orderImageUrl ? '<div class="asset-item"><div class="asset-label">订单截图</div><img src="' + escapeHtml(item.orderImageUrl) + '" alt="订单截图"></div>' : ''}
-                \${item.videoUrl ? '<div class="asset-item"><div class="asset-label">充值视频</div><video src="' + escapeHtml(item.videoUrl) + '" controls></video></div>' : ''}
-              </div>
-              <label>审核备注</label>
-              <textarea id="remark-\${item.id}" rows="5" placeholder="可填写通过或驳回原因">\${escapeHtml(item.reviewRemark || '')}</textarea>
-              <div class="actions">
-                <button class="ok" onclick="review('\${item.id}', 'approved')">通过</button>
-                <button class="danger" onclick="review('\${item.id}', 'rejected')">驳回</button>
+                \${assetImage('ID截图', item.gameIdImageUrl)}
+                \${assetImage('订单截图', item.orderImageUrl)}
+                \${assetVideo('充值视频', item.videoUrl)}
+                \${assetVideo('任意应用下载录屏', item.downloadVideoUrl)}
               </div>
             </div>
+            <aside class="review-aside">
+              <section class="review-panel">
+                <div>
+                  <div class="muted">当前状态</div>
+                  <div class="status \${item.status || 'pending'}" style="display:inline-block;margin-top:6px;">\${statusText(item.status)}</div>
+                </div>
+                <label>审核备注</label>
+                <div class="remark-templates">
+                  <button class="secondary mini" onclick="applyRemark('\${item.id}', '资料清晰，审核通过')">通过模板</button>
+                  <button class="secondary mini" onclick="applyRemark('\${item.id}', '资料不完整，请重新提交')">资料不完整</button>
+                  <button class="secondary mini" onclick="applyRemark('\${item.id}', '截图或视频不清晰，请重新上传')">资料不清晰</button>
+                </div>
+              <textarea id="remark-\${item.id}" rows="5" placeholder="可填写通过或驳回原因">\${escapeHtml(item.reviewRemark || '')}</textarea>
+              <div class="actions">
+                  <button class="ok review-action" onclick="review('\${item.id}', 'approved')">通过</button>
+                  <button class="danger review-action" onclick="review('\${item.id}', 'rejected')">驳回</button>
+              </div>
+              </section>
+            </aside>
           </div>
         </article>
       \`).join('');
     }
     async function review(id, status) {
-      const reviewRemark = document.querySelector('#remark-' + id).value;
-      await request('/api/admin/submissions/' + encodeURIComponent(id) + '/review', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status, reviewRemark })
-      });
-      loadData();
+      const textarea = document.querySelector('#remark-' + id);
+      const reviewRemark = textarea.value.trim()
+        || (status === 'rejected' ? '资料不完整，请重新提交' : '资料清晰，审核通过');
+      document.querySelectorAll('.review-action').forEach(button => button.disabled = true);
+      try {
+        await request('/api/admin/submissions/' + encodeURIComponent(id) + '/review', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status, reviewRemark })
+        });
+        showToast(status === 'rejected' ? '已驳回' : '已通过');
+        loadData();
+      } catch (error) {
+        showToast(error.message);
+      } finally {
+        document.querySelectorAll('.review-action').forEach(button => button.disabled = false);
+      }
+    }
+    function applyRemark(id, text) {
+      const textarea = document.querySelector('#remark-' + id);
+      if (textarea) {
+        textarea.value = text;
+        textarea.focus();
+      }
+    }
+    async function copyText(value) {
+      const text = String(value || '');
+      if (!text) return;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const input = document.createElement('textarea');
+        input.value = text;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        input.remove();
+      }
+      showToast('已复制');
+    }
+    function fieldBlock(label, value) {
+      const safeValue = escapeHtml(value || '-');
+      const copy = value ? '<button class="secondary mini" onclick="copyText(\\'' + escapeJs(value) + '\\')">复制</button>' : '';
+      return '<div class="field-line"><div class="field-head"><div class="field-name">' + escapeHtml(label) + '</div>' + copy + '</div><div class="field-value">' + safeValue + '</div></div>';
     }
     function escapeHtml(value) {
-      return String(value).replace(/[&<>"']/g, char => ({
+      return String(value == null ? '' : value).replace(/[&<>"']/g, char => ({
         '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
       }[char]));
     }
-    loadData().catch(error => alert(error.message));
+    function escapeJs(value) {
+      return String(value == null ? '' : value).replace(/\\\\/g, '\\\\\\\\').replace(/'/g, "\\\\'");
+    }
+    function assetImage(label, url) {
+      const safeLabel = escapeHtml(label);
+      if (!url) {
+        return '<div class="asset-item"><div class="asset-label">' + safeLabel + '</div><div class="asset-missing">未上传或旧记录无此截图</div></div>';
+      }
+      const safeUrl = escapeHtml(url);
+      return '<div class="asset-item"><div class="asset-top"><div class="asset-label">' + safeLabel + '</div><a class="secondary button-link mini" href="' + safeUrl + '" target="_blank" rel="noopener">打开</a></div><img src="' + safeUrl + '" alt="' + safeLabel + '"></div>';
+    }
+    function assetVideo(label, url) {
+      const safeLabel = escapeHtml(label);
+      if (!url) {
+        return '<div class="asset-item"><div class="asset-label">' + safeLabel + '</div><div class="asset-missing">未上传或旧记录无此视频</div></div>';
+      }
+      const safeUrl = escapeHtml(url);
+      return '<div class="asset-item"><div class="asset-top"><div class="asset-label">' + safeLabel + '</div><a class="secondary button-link mini" href="' + safeUrl + '" target="_blank" rel="noopener">打开</a></div><video src="' + safeUrl + '" controls></video></div>';
+    }
+    loadData().catch(error => showToast(error.message));
   `);
 }
 
@@ -1152,9 +1344,11 @@ function withVideoUrl(req, item) {
     return `${publicBaseUrl(req)}/uploads/${encodeURIComponent(file)}`;
   };
   const videoFile = item.videoFile || item.videoFileId || item.videoUrl;
+  const downloadVideoFile = item.downloadVideoFile || item.downloadVideoFileId || item.downloadVideo || item.downloadVideoUrl || item.secondVideoFile || item.secondVideoFileId || item.videoFile2 || item.videoFileId2;
   return {
     ...item,
-    videoUrl: assetUrl(videoFile)
+    videoUrl: assetUrl(videoFile),
+    downloadVideoUrl: assetUrl(downloadVideoFile)
   };
 }
 
@@ -1178,11 +1372,13 @@ function withAssetUrls(req, item) {
     return `${publicBaseUrl(req)}/uploads/${encodeURIComponent(file)}`;
   };
   const videoFile = item.videoFile || item.videoFileId || item.videoUrl;
+  const downloadVideoFile = item.downloadVideoFile || item.downloadVideoFileId || item.downloadVideo || item.downloadVideoUrl || item.secondVideoFile || item.secondVideoFileId || item.videoFile2 || item.videoFileId2;
   return {
     ...item,
     gameIdImageUrl: assetUrl(item.gameIdImageFile),
     orderImageUrl: assetUrl(item.orderImageFile),
-    videoUrl: assetUrl(videoFile)
+    videoUrl: assetUrl(videoFile),
+    downloadVideoUrl: assetUrl(downloadVideoFile)
   };
 }
 
@@ -1249,6 +1445,7 @@ async function handle(req, res) {
   }
   if (req.method === "GET" && url.pathname === "/admin/review-detail") {
     sendHtml(res, reviewDetailPage(url.searchParams.get("submissionId") || "", {
+      keyword: url.searchParams.get("keyword") || "",
       status: url.searchParams.get("status") || "",
       startDate: url.searchParams.get("startDate") || "",
       endDate: url.searchParams.get("endDate") || ""
@@ -1474,12 +1671,21 @@ async function handle(req, res) {
       return;
     }
     const videoFileId = body.videoFileId || body.videoFile || body.videoUrl;
+    const downloadVideoFileId = body.downloadVideoFileId
+      || body.downloadVideoFile
+      || body.downloadVideo
+      || body.downloadVideoUrl
+      || body.secondVideoFile
+      || body.secondVideoFileId
+      || body.videoFile2
+      || body.videoFileId2;
     const missingFields = [
       ["gameId", body.gameId],
       ["orderNo", body.orderNo],
       ["gameIdImageFileId", body.gameIdImageFileId],
       ["orderImageFileId", body.orderImageFileId],
-      ["videoFileId", videoFileId]
+      ["videoFileId", videoFileId],
+      ["downloadVideoFileId", downloadVideoFileId]
     ].filter(item => !item[1]).map(item => item[0]);
     if (missingFields.length) {
       logError("submission-validation-failed", {
@@ -1492,7 +1698,12 @@ async function handle(req, res) {
         projectId: String(body.projectId || "").trim(),
         projectName: String(body.projectName || body.taskTitle || "").trim(),
         videoFields: {
-          hasVideoFileId: Boolean(body.videoFileId)
+          hasVideoFileId: Boolean(body.videoFileId),
+          hasDownloadVideoFileId: Boolean(body.downloadVideoFileId),
+          hasDownloadVideoFile: Boolean(body.downloadVideoFile),
+          hasDownloadVideoUrl: Boolean(body.downloadVideoUrl),
+          hasSecondVideoFileId: Boolean(body.secondVideoFileId),
+          hasVideoFileId2: Boolean(body.videoFileId2)
         }
       });
       sendJson(res, 400, { message: `资料不完整：缺少 ${missingFields.join(", ")}`, requestId, missingFields });
@@ -1513,6 +1724,8 @@ async function handle(req, res) {
       orderImageFile: body.orderImageFileId,
       videoFile: videoFileId,
       videoFileId,
+      downloadVideoFile: downloadVideoFileId,
+      downloadVideoFileId,
       clientBuildTag: String(body.clientBuildTag || "").trim(),
       status: "pending",
       reviewRemark: "",

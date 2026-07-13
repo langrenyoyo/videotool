@@ -7,7 +7,8 @@ Page({
   _uploadSeq: {
     gameId: 0,
     order: 0,
-    video: 0
+    video: 0,
+    downloadVideo: 0
   },
 
   data: {
@@ -20,16 +21,19 @@ Page({
     gameIdImagePath: "",
     orderImagePath: "",
     videoPath: "",
+    downloadVideoPath: "",
     gameId: "",
     orderNo: "",
     gameIdImageFileId: "",
     orderImageFileId: "",
     videoFileId: "",
+    downloadVideoFileId: "",
     assetUploading: false,
     uploadMaskText: "正在上传，请稍候",
     gameIdImageUploadError: "",
     orderImageUploadError: "",
     videoUploadError: "",
+    downloadVideoUploadError: "",
     submitting: false
   },
 
@@ -121,6 +125,14 @@ Page({
 
   chooseVideoFromAlbum() {
     this.pickVideo("album", "video");
+  },
+
+  chooseDownloadVideoFromCamera() {
+    this.pickVideo("camera", "downloadVideo");
+  },
+
+  chooseDownloadVideoFromAlbum() {
+    this.pickVideo("album", "downloadVideo");
   },
 
   pickImage(useCamera = false, sourceType = null, kind = "gameId") {
@@ -256,14 +268,15 @@ Page({
   },
 
   videoUploadConfig(kind) {
+    const isDownloadVideo = kind === "downloadVideo";
     return {
-      pathKey: "videoPath",
-      fileIdKey: "videoFileId",
-      errorKey: "videoUploadError",
-      maskText: "正在上传视频",
-      missingText: "视频上传未返回文件ID",
-      failText: "视频上传失败",
-      successText: "视频上传成功"
+      pathKey: isDownloadVideo ? "downloadVideoPath" : "videoPath",
+      fileIdKey: isDownloadVideo ? "downloadVideoFileId" : "videoFileId",
+      errorKey: isDownloadVideo ? "downloadVideoUploadError" : "videoUploadError",
+      maskText: isDownloadVideo ? "正在上传任意应用下载录屏" : "正在上传视频",
+      missingText: isDownloadVideo ? "任意应用下载录屏上传未返回文件ID" : "视频上传未返回文件ID",
+      failText: isDownloadVideo ? "任意应用下载录屏上传失败" : "视频上传失败",
+      successText: isDownloadVideo ? "任意应用下载录屏上传成功" : "视频上传成功"
     };
   },
 
@@ -431,9 +444,11 @@ Page({
       gameIdImagePath: this.data.gameIdImagePath,
       orderImagePath: this.data.orderImagePath,
       videoPath: this.data.videoPath,
+      downloadVideoPath: this.data.downloadVideoPath,
       gameIdImageFileId: this.data.gameIdImageFileId,
       orderImageFileId: this.data.orderImageFileId,
-      videoFileId: this.data.videoFileId
+      videoFileId: this.data.videoFileId,
+      downloadVideoFileId: this.data.downloadVideoFileId
     };
     const error = validateSubmission(input);
     if (error) {
@@ -451,9 +466,11 @@ Page({
           hasGameIdImagePath: Boolean(input.gameIdImagePath),
           hasOrderImagePath: Boolean(input.orderImagePath),
           hasVideoPath: Boolean(input.videoPath),
+          hasDownloadVideoPath: Boolean(input.downloadVideoPath),
           hasGameIdImageFileId: Boolean(input.gameIdImageFileId),
           hasOrderImageFileId: Boolean(input.orderImageFileId),
-          hasVideoFileId: Boolean(input.videoFileId)
+          hasVideoFileId: Boolean(input.videoFileId),
+          hasDownloadVideoFileId: Boolean(input.downloadVideoFileId)
         }
       }).catch(() => {});
       wx.showToast({
@@ -495,9 +512,11 @@ Page({
             hasGameIdImagePath: Boolean(input.gameIdImagePath),
             hasOrderImagePath: Boolean(input.orderImagePath),
             hasVideoPath: Boolean(input.videoPath),
+            hasDownloadVideoPath: Boolean(input.downloadVideoPath),
             hasGameIdImageFileId: Boolean(input.gameIdImageFileId),
             hasOrderImageFileId: Boolean(input.orderImageFileId),
-            hasVideoFileId: Boolean(input.videoFileId)
+            hasVideoFileId: Boolean(input.videoFileId),
+            hasDownloadVideoFileId: Boolean(input.downloadVideoFileId)
           }
         }).catch(() => {});
         wx.showToast({
